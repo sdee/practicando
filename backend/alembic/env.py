@@ -136,12 +136,12 @@ def run_migrations_online() -> None:
                 # Verify if migrations worked by checking for specific tables
                 result = connection.execute(text("""
                     SELECT COUNT(*) FROM information_schema.tables 
-                    WHERE table_schema='public' AND table_name IN ('questions', 'guesses')
+                    WHERE table_schema='public' AND table_name IN ('questions')
                 """))
                 
                 table_count = result.scalar()
-                if table_count < 2:
-                    logger.warning(f"Expected tables not found after migrations! Found {table_count}/2 tables.")
+                if table_count < 1:
+                    logger.warning(f"Expected tables not found after migrations! Found {table_count}/1 tables.")
                     logger.warning("Check your migration files to ensure they contain the proper CREATE TABLE statements.")
                 else:
                     logger.info(f"Successfully verified {table_count} expected tables exist")

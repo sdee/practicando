@@ -4,6 +4,16 @@ from typing import Generator, Optional
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
+# Load environment variables from .env file (development only)
+# In production (AWS EB), environment variables are set directly
+if os.path.exists('.env'):
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        # python-dotenv not available, skip loading .env file
+        pass
+
 # ---- build URL from env or EB's RDS_* ----
 def _db_url() -> str:
     # First check for explicit DATABASE_URL
