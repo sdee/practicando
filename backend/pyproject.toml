@@ -1,0 +1,33 @@
+[project]
+name = "fastapi-backend"
+version = "0.1.0"
+description = "FastAPI backend for FastAPI + React + Postgres template"
+authors = ["Your Name <you@example.com>"]
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "psycopg2-binary",
+    "python-dotenv",
+    "pytest",
+    "sqlalchemy",
+    "alembic",
+    "asyncpg",
+    "greenlet",
+    "pytest",
+    "httpx",
+    "pytest-asyncio",
+    "asgi_lifespan",
+    "aiosqlite",
+    "gunicorn>=23.0.0",
+    "ruff>=0.12.9",
+]
+
+[tool.uv]
+# uv-specific settings can go here if needed
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::ResourceWarning"
+]
