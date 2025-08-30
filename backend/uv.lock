@@ -231,6 +231,7 @@ dependencies = [
     { name = "pytest-asyncio" },
     { name = "python-dotenv" },
     { name = "ruff" },
+    { name = "spanishconjugator" },
     { name = "sqlalchemy" },
     { name = "uvicorn" },
 ]
@@ -251,6 +252,7 @@ requires-dist = [
     { name = "pytest-asyncio" },
     { name = "python-dotenv" },
     { name = "ruff", specifier = ">=0.12.9" },
+    { name = "spanishconjugator", specifier = ">=2.3.9474" },
     { name = "sqlalchemy" },
     { name = "uvicorn" },
 ]
@@ -754,6 +756,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a2/87/a6771e1546d97e7e041b6ae58d80074f81b7d5121207425c964ddf5cfdbd/sniffio-1.3.1.tar.gz", hash = "sha256:f4324edc670a0f49750a81b895f35c3adb843cca46f0530f79fc1babb23789dc", size = 20372, upload-time = "2024-02-25T23:20:04.057Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl", hash = "sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2", size = 10235, upload-time = "2024-02-25T23:20:01.196Z" },
+]
+
+[[package]]
+name = "spanishconjugator"
+version = "2.3.9474"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c7/1b/94341dc5c77e2e24b8838ee75ec5c6ef378e14a2a463a8be6547b90fc670/spanishconjugator-2.3.9474.tar.gz", hash = "sha256:4922f87c95fdda9864ce62d364b7214b96ab248d384a9098377edf2dc06a2acc", size = 13017, upload-time = "2024-12-09T17:14:24.075Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/80/9b/d85164511ac13a33542fac6f764c0ea53d99053ea89e8cb14242b6b01a2a/spanishconjugator-2.3.9474-py3-none-any.whl", hash = "sha256:dcfd578cfe71d0742ae055b622fb41a9f25861859ded4abce20efc258f6fb129", size = 19877, upload-time = "2024-12-09T17:14:22.609Z" },
 ]
 
 [[package]]

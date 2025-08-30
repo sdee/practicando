@@ -12,15 +12,24 @@ import psycopg2
 
 from db import get_db, get_engine
 from models import Question, Base
-from schemas import QuestionOut
+from spanishconjugator import Conjugator
+from dependencies import set_conjugator
+
+# Import routers
+from routers import questions
 
 app = FastAPI()
 
-# Create tables on startup
+# Create tables and initialize services on startup
 @app.on_event("startup")
-def create_tables():
+def startup_event():
+    # Create database tables
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
+    
+    # Initialize conjugator
+    conjugator = Conjugator()
+    set_conjugator(conjugator)
 
 # Allow CORS for local frontend development
 app.add_middleware(
@@ -30,6 +39,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(questions.router, prefix="/api/questions", tags=["questions"])
 
 
 class HealthResponse(BaseModel):

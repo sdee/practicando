@@ -22,6 +22,7 @@ dependencies = [
     "aiosqlite",
     "gunicorn>=23.0.0",
     "ruff>=0.12.9",
+    "spanishconjugator>=2.3.9474",
 ]
 
 [tool.uv]
