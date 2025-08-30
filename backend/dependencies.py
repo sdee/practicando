@@ -1,5 +1,6 @@
 from fastapi import HTTPException
 from spanishconjugator import Conjugator
+from services import QuestionService, create_question_service
 
 def get_conjugator() -> Conjugator:
     """Get conjugator instance from app state"""
@@ -11,3 +12,8 @@ def get_conjugator() -> Conjugator:
 def set_conjugator(conjugator: Conjugator):
     """Set the conjugator instance (called from main.py on startup)"""
     get_conjugator._conjugator = conjugator
+
+def get_question_service() -> QuestionService:
+    """Get question service instance with conjugator dependency"""
+    conjugator = get_conjugator()
+    return create_question_service(conjugator)

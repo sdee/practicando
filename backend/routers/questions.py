@@ -7,9 +7,10 @@ from spanishconjugator import Conjugator
 import random
 
 # Import from dependencies instead of main to avoid circular imports
-from dependencies import get_conjugator
+from dependencies import get_conjugator, get_question_service
 from models import TenseEnum, MoodEnum, PronounEnum
-from utils import validate_enum_value, normalize_pronoun, extract_conjugation_from_response
+from utils import validate_enum_value
+from services import QuestionService
 
 router = APIRouter()
 
@@ -44,7 +45,7 @@ def get_questions(
     mood: List[str] = Query(default=["indicative"], description="Filter by moods", alias="mood"),
     limit: int = Query(default=1, ge=1, le=100, description="Number of questions to return"),
     db: Session = Depends(get_db),
-    conjugator: Conjugator = Depends(get_conjugator)
+    question_service: QuestionService = Depends(get_question_service)
 ):
     """Get questions with random combinations of pronouns, tenses, and moods"""
     
@@ -57,7 +58,6 @@ def get_questions(
             limit=limit
         )
     except ValidationError as e:
-        # Extract validation errors and return as HTTP 422 with clear error messages
         error_details = []
         for error in e.errors():
             field = error['loc'][-1] if error['loc'] else 'unknown'
@@ -72,17 +72,14 @@ def get_questions(
             }
         )
     
-    # Create random combinations for the number specified in limit
-    questions = []
-    for _ in range(filters.limit):
-        pronoun_choice, tense_choice, mood_choice, verb = random.choice(filters.pronoun), random.choice(filters.tense), random.choice(filters.mood), random.choice(['hablar', 'ir', 'comer', 'caminar'])
-        # Normalize pronoun for conjugator (special handling for subjunctive mood)
-        normalized_pronoun = normalize_pronoun(pronoun_choice, mood_choice)
-        # Get conjugation response
-        conjugation_response = conjugator.conjugate(verb, tense_choice, mood_choice, normalized_pronoun)
-        # Extract the correct conjugation based on mood and pronoun
-        answer = extract_conjugation_from_response(conjugation_response, pronoun_choice, mood_choice)
-        questions.append({'pronoun': pronoun_choice, 'tense': tense_choice, 'answer': answer, 'verb': verb, 'mood': mood_choice})
+    # Use the service to generate questions
+    questions = question_service.generate_questions(
+        pronouns=filters.pronoun,
+        tenses=filters.tense,
+        moods=filters.mood,
+        limit=filters.limit
+    )
+    
     return {
         "questions": questions
     }
