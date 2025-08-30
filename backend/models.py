@@ -21,6 +21,17 @@ class MoodEnum(enum.Enum):
     indicative = "indicative"
     subjunctive = "subjunctive"
 
+class PronounEnum(enum.Enum):
+    yo = "yo"
+    tu = "tu"
+    el = "el"
+    ellos = "ellos"
+    ella = "ella"
+    usted = "usted"
+    nosotros = "nosotros"
+    vosotros = "vosotros"
+    ustedes = "ustedes"
+
 # Question model
 class Question(Base):
     __tablename__ = "questions"
