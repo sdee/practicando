@@ -4,7 +4,6 @@ from typing import Optional, List
 from pydantic import BaseModel, Field, validator, ValidationError
 from db import get_db
 from spanishconjugator import Conjugator
-import random
 
 # Import from dependencies instead of main to avoid circular imports
 from dependencies import get_conjugator, get_question_service
