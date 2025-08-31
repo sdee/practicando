@@ -1,9 +1,187 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSpring, animated } from '@react-spring/web';
 import { Question, AnswerState, FlashcardState } from '@/types/flashcard';
-import { fetchQuestions } from '@/services/api';
+import { fetchQuestions, Filters } from '@/services/api';
+
+interface PronounOption {
+  value: string;
+  label: string;
+  includes: string[]; // For combined options like él/ella
+}
+
+interface FilterPanelProps {
+  isOpen: boolean;
+  onToggle: () => void;
+  filters: Filters;
+  onFiltersChange: (filters: Filters) => void;
+  onApply: () => void;
+}
+
+function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply }: FilterPanelProps) {
+  const pronounOptions: PronounOption[] = [
+    { value: 'yo', label: 'yo', includes: ['yo'] },
+    { value: 'tu', label: 'tú', includes: ['tu'] },
+    { value: 'el_ella', label: 'él/ella', includes: ['el', 'ella'] },
+    { value: 'usted', label: 'usted', includes: ['usted'] },
+    { value: 'nosotros', label: 'nosotros', includes: ['nosotros'] },
+    { value: 'vosotros', label: 'vosotros', includes: ['vosotros'] },
+    { value: 'ellos_ellas', label: 'ellos/ellas', includes: ['ellos', 'ustedes'] },
+  ];
+
+  const tenseOptions = [
+    { value: 'present', label: 'Present' },
+    { value: 'imperfect', label: 'Imperfect' },
+    { value: 'preterite', label: 'Preterite' },
+    { value: 'future', label: 'Future' },
+    { value: 'present_perfect', label: 'Present Perfect' },
+    { value: 'past_anterior', label: 'Past Anterior' },
+    { value: 'future_perfect', label: 'Future Perfect' },
+    { value: 'conditional_simple', label: 'Conditional Simple' },
+  ];
+
+  const moodOptions = [
+    { value: 'conditional', label: 'Conditional' },
+    { value: 'imperative', label: 'Imperative' },
+    { value: 'indicative', label: 'Indicative' },
+    { value: 'subjunctive', label: 'Subjunctive' },
+  ];
+
+  // Convert current filters to checkbox states
+  const isPronounChecked = (option: PronounOption) => {
+    return option.includes.every(pronoun => filters.pronouns.includes(pronoun));
+  };
+
+  const handlePronounChange = (option: PronounOption, checked: boolean) => {
+    let newPronouns = [...filters.pronouns];
+    
+    if (checked) {
+      // Add all pronouns from this option
+      option.includes.forEach(pronoun => {
+        if (!newPronouns.includes(pronoun)) {
+          newPronouns.push(pronoun);
+        }
+      });
+    } else {
+      // Remove all pronouns from this option
+      newPronouns = newPronouns.filter(pronoun => !option.includes.includes(pronoun));
+    }
+    
+    onFiltersChange({ ...filters, pronouns: newPronouns });
+  };
+
+  const handleTenseChange = (tense: string, checked: boolean) => {
+    const newTenses = checked 
+      ? [...filters.tenses, tense]
+      : filters.tenses.filter(t => t !== tense);
+    
+    onFiltersChange({ ...filters, tenses: newTenses });
+  };
+
+  const handleMoodChange = (mood: string, checked: boolean) => {
+    const newMoods = checked 
+      ? [...filters.moods, mood]
+      : filters.moods.filter(m => m !== mood);
+    
+    onFiltersChange({ ...filters, moods: newMoods });
+  };
+
+  const panelAnimation = useSpring({
+    maxHeight: isOpen ? '1000px' : '0px',
+    opacity: isOpen ? 1 : 0,
+    config: { tension: 300, friction: 30 }
+  });
+
+  return (
+    <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-white/80 shadow-lg mb-6">
+      <button
+        onClick={onToggle}
+        className="w-full p-4 text-left flex items-center justify-between hover:bg-white/50 transition-colors rounded-xl"
+      >
+        <div className="flex items-center space-x-2">
+          <span className="text-lg font-semibold text-slate-700">Filters</span>
+          <span className="text-sm text-slate-500">
+            ({filters.pronouns.length} pronouns, {filters.tenses.length} tenses, {filters.moods.length} moods)
+          </span>
+        </div>
+        <div className={`transform transition-transform ${isOpen ? 'rotate-180' : ''}`}>
+          ▼
+        </div>
+      </button>
+      
+      <animated.div style={{ ...panelAnimation, overflow: 'hidden' }}>
+        <div className="p-4 border-t border-slate-200">
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Pronouns */}
+            <div>
+              <h3 className="font-semibold text-slate-700 mb-3">Pronouns</h3>
+              <div className="space-y-2">
+                {pronounOptions.map(option => (
+                  <label key={option.value} className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isPronounChecked(option)}
+                      onChange={(e) => handlePronounChange(option, e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-slate-600">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Tenses */}
+            <div>
+              <h3 className="font-semibold text-slate-700 mb-3">Tenses</h3>
+              <div className="space-y-2">
+                {tenseOptions.map(option => (
+                  <label key={option.value} className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filters.tenses.includes(option.value)}
+                      onChange={(e) => handleTenseChange(option.value, e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-slate-600">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Moods */}
+            <div>
+              <h3 className="font-semibold text-slate-700 mb-3">Moods</h3>
+              <div className="space-y-2">
+                {moodOptions.map(option => (
+                  <label key={option.value} className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filters.moods.includes(option.value)}
+                      onChange={(e) => handleMoodChange(option.value, e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-slate-600">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={onApply}
+              disabled={filters.pronouns.length === 0 || filters.tenses.length === 0 || filters.moods.length === 0}
+              className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:bg-slate-300 disabled:cursor-not-allowed font-medium transition-colors"
+            >
+              Apply Filters
+            </button>
+          </div>
+        </div>
+      </animated.div>
+    </div>
+  );
+}
 
 interface FlashcardProps {
   question: Question;
@@ -151,12 +329,21 @@ export default function FlashcardGame() {
   const [error, setError] = useState<string | null>(null);
   const [answerState, setAnswerState] = useState<AnswerState>('unanswered');
   const [stats, setStats] = useState({ correct: 0, total: 0 });
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  
+  // Default filters: yo, tu, present, indicative
+  const [filters, setFilters] = useState<Filters>({
+    pronouns: ['yo', 'tu'],
+    tenses: ['present'],
+    moods: ['indicative']
+  });
 
-  const loadQuestions = async () => {
+  const loadQuestions = async (useFilters?: Filters) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetchQuestions(15);
+      const filtersToUse = useFilters || filters;
+      const response = await fetchQuestions(15, filtersToUse);
       console.log('Received questions:', response.questions); // Debug log
       setQuestions(response.questions);
       setCurrentIndex(0);
@@ -191,6 +378,11 @@ export default function FlashcardGame() {
     }
   };
 
+  const handleFiltersApply = () => {
+    setFilterPanelOpen(false); // Auto-collapse the panel
+    loadQuestions(filters); // Load questions with new filters
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-purple-50 flex items-center justify-center">
@@ -214,7 +406,7 @@ export default function FlashcardGame() {
           <div className="text-xl font-bold text-slate-700 mb-4">Something went wrong</div>
           <div className="text-slate-600 mb-6">Error: {error}</div>
           <button
-            onClick={loadQuestions}
+            onClick={() => loadQuestions()}
             className="bg-blue-500 text-white px-6 py-3 rounded-xl hover:bg-blue-600 font-semibold transition-colors"
           >
             Try Again
@@ -244,7 +436,7 @@ export default function FlashcardGame() {
           <div className="text-xl font-bold text-slate-700 mb-4">Oops! Something went wrong</div>
           <div className="text-lg text-slate-600 mb-6">Error: {error}</div>
           <button
-            onClick={loadQuestions}
+            onClick={() => loadQuestions()}
             className="bg-blue-500 text-white px-6 py-3 rounded-xl hover:bg-blue-600 font-semibold transition-colors"
           >
             Try Again 🔄
@@ -287,6 +479,15 @@ export default function FlashcardGame() {
             </div>
           </div>
         </div>
+
+        {/* Filter Panel */}
+        <FilterPanel
+          isOpen={filterPanelOpen}
+          onToggle={() => setFilterPanelOpen(!filterPanelOpen)}
+          filters={filters}
+          onFiltersChange={setFilters}
+          onApply={handleFiltersApply}
+        />
 
         {/* Flashcard Container */}
         <div className="flex justify-center items-center" style={{ minHeight: '360px' }}>

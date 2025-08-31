@@ -1,16 +1,23 @@
 import { QuestionResponse } from '@/types/flashcard';
 
-export async function fetchQuestions(count: number = 15): Promise<QuestionResponse> {
+export interface Filters {
+  pronouns: string[];
+  tenses: string[];
+  moods: string[];
+}
+
+export async function fetchQuestions(count: number = 15, filters?: Filters): Promise<QuestionResponse> {
   const params = new URLSearchParams();
   
   // Add limit
   params.append('limit', count.toString());
   
-  // Add arrays as multiple parameters with the same name (proper FastAPI array format)
-  const pronouns = ['yo', 'tu', 'el', 'ella', 'usted', 'nosotros', 'vosotros', 'ellos', 'ustedes'];
-  const tenses = ['present', 'imperfect', 'preterite', 'future', 'present_perfect', 'past_anterior', 'future_perfect', 'conditional_simple'];
-  const moods = ['conditional', 'imperative', 'indicative', 'subjunctive'];
+  // Use provided filters or defaults
+  const pronouns = filters?.pronouns || ['yo', 'tu', 'el', 'ella', 'usted', 'nosotros', 'vosotros', 'ellos', 'ustedes'];
+  const tenses = filters?.tenses || ['present', 'imperfect', 'preterite', 'future', 'present_perfect', 'past_anterior', 'future_perfect', 'conditional_simple'];
+  const moods = filters?.moods || ['conditional', 'imperative', 'indicative', 'subjunctive'];
   
+  // Add arrays as multiple parameters with the same name (proper FastAPI array format)
   pronouns.forEach(p => params.append('pronoun', p));
   tenses.forEach(t => params.append('tense', t));
   moods.forEach(m => params.append('mood', m));
