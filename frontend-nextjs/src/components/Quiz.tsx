@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useSpring, animated } from '@react-spring/web';
 import { Question, AnswerState, FlashcardState } from '@/types/flashcard';
 import { fetchQuestions, Filters } from '@/services/api';
 
@@ -87,12 +86,6 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply }: Fi
     onFiltersChange({ ...filters, moods: newMoods });
   };
 
-  const panelAnimation = useSpring({
-    maxHeight: isOpen ? '1000px' : '0px',
-    opacity: isOpen ? 1 : 0,
-    config: { tension: 300, friction: 30 }
-  });
-
   return (
     <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-white/80 shadow-lg mb-6">
       <button
@@ -110,7 +103,7 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply }: Fi
         </div>
       </button>
       
-      <animated.div style={{ ...panelAnimation, overflow: 'hidden' }}>
+      <div style={{ maxHeight: isOpen ? '1000px' : '0px', opacity: isOpen ? 1 : 0, overflow: 'hidden' }}>
         <div className="p-4 border-t border-slate-200">
           <div className="grid md:grid-cols-3 gap-6">
             {/* Pronouns */}
@@ -178,7 +171,7 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply }: Fi
             </button>
           </div>
         </div>
-      </animated.div>
+      </div>
     </div>
   );
 }
@@ -193,18 +186,6 @@ interface FlashcardProps {
 function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
   const [userAnswer, setUserAnswer] = useState('');
   const [showAnswer, setShowAnswer] = useState(false);
-
-  // Animation for correct/incorrect feedback
-  const bounceAnimation = useSpring({
-    transform: state === 'correct' ? 'scale(1.1)' : 'scale(1)',
-    config: { tension: 300, friction: 10 }
-  });
-
-  const shakeAnimation = useSpring({
-    transform: state === 'incorrect' ? 'translateX(-10px)' : 'translateX(0px)',
-    config: { tension: 500, friction: 10 },
-    loop: state === 'incorrect' ? { reverse: true } : false,
-  });
 
   // Reset state when question changes
   useEffect(() => {
@@ -258,7 +239,7 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
   }, [showAnswer, handleNext]); // Include handleNext in dependencies
 
   return (
-    <animated.div 
+    <div 
       className={`
         w-[480px] h-96 mx-auto p-6 rounded-2xl shadow-lg border-2 transition-all duration-300 flex flex-col justify-between hover:shadow-xl
         ${state === 'correct' ? 'border-emerald-300 shadow-emerald-200/30' : 
@@ -266,7 +247,6 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
           'border-slate-300 shadow-slate-200/30'}
       `}
       style={{
-        ...((state === 'correct' ? bounceAnimation : shakeAnimation) as any),
         background: state === 'correct' ? 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)' :
                    state === 'incorrect' ? 'linear-gradient(135deg, #fef2f2 0%, #fecdd3 100%)' :
                    'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
@@ -351,7 +331,7 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
           </div>
         </div>
       )}
-    </animated.div>
+    </div>
   );
 }
 
