@@ -51,37 +51,7 @@ def run_migrations_offline() -> None:
     with context.begin_transaction():
         context.run_migrations()
 
-def check_db_state(connection, label=""):
-    """Check database state"""
-    try:
-        logger.info(f"--- Database state {label} ---")
-        
-        # Check tables
-        result = connection.execute(text("""
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema='public'
-        """))
-        tables = [row[0] for row in result]
-        logger.info(f"Tables: {tables}")
-        
-        # Check alembic_version
-        if 'alembic_version' in tables:
-            result = connection.execute(text("SELECT * FROM alembic_version"))
-            versions = [row[0] for row in result]
-            logger.info(f"Alembic version: {versions}")
-        
-        # Test permissions
-        try:
-            logger.info("Testing database permissions...")
-            connection.execute(text("CREATE TABLE IF NOT EXISTS _alembic_test_permissions (id INT)"))
-            connection.execute(text("DROP TABLE IF EXISTS _alembic_test_permissions"))
-            logger.info("Permission test passed: Can create and drop tables")
-        except Exception as e:
-            logger.error(f"Permission test failed: {e}")
-            
-    except Exception as e:
-        logger.warning(f"Error checking database state: {e}")
+
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
@@ -95,9 +65,6 @@ def run_migrations_online() -> None:
             # Create a new connection with AUTOCOMMIT enabled
             # This is the key change to ensure transactions are committed properly
             with engine.execution_options(isolation_level="AUTOCOMMIT").connect() as connection:
-                # Check DB state before migrations
-                check_db_state(connection, "BEFORE migrations")
-                
                 # Configure context with connection
                 context.configure(
                     connection=connection,
@@ -130,22 +97,6 @@ def run_migrations_online() -> None:
                         pass
                     raise
                 
-                # Check DB state after migrations
-                check_db_state(connection, "AFTER migrations")
-                
-                # Verify if migrations worked by checking for specific tables
-                result = connection.execute(text("""
-                    SELECT COUNT(*) FROM information_schema.tables 
-                    WHERE table_schema='public' AND table_name IN ('questions')
-                """))
-                
-                table_count = result.scalar()
-                if table_count < 1:
-                    logger.warning(f"Expected tables not found after migrations! Found {table_count}/1 tables.")
-                    logger.warning("Check your migration files to ensure they contain the proper CREATE TABLE statements.")
-                else:
-                    logger.info(f"Successfully verified {table_count} expected tables exist")
-                    
                 # Success, break out of retry loop
                 return
                 
