@@ -268,7 +268,7 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
       </div>
 
       {/* Card Content */}
-      <div className="flex-1 flex flex-col justify-center min-h-[200px]">
+      <div className="flex-1 flex flex-col justify-center">
         {!showAnswer && (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -292,12 +292,12 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
         )}
 
         {showAnswer && (
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-2">
             <div className={`text-2xl font-bold ${state === 'correct' ? 'text-emerald-600' : 'text-rose-600'}`}>
               {state === 'correct' ? 'Correct!' : 'Incorrect'}
             </div>
             
-            <div className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-slate-200">
+            <div className="bg-white/80 backdrop-blur-sm p-1 rounded-xl border border-slate-200">
               <div className="mb-2">
                 <span className="text-slate-600 text-sm font-medium">Your answer: </span>
                 <span className={`font-semibold ${state === 'correct' ? 'text-emerald-600' : 'text-rose-600'}`}>
