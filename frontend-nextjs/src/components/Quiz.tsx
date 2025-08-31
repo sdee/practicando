@@ -247,9 +247,9 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
           'border-slate-300 shadow-slate-200/30'}
       `}
       style={{
-        background: state === 'correct' ? 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)' :
-                   state === 'incorrect' ? 'linear-gradient(135deg, #fef2f2 0%, #fecdd3 100%)' :
-                   'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+        background: state === 'correct' ? 'linear-gradient(135deg, #f9e2e2 0%, #f7c6c6 100%)' :
+                   state === 'incorrect' ? 'linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%)' :
+                   'linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)',
       }}
     >
       {/* Card Header */}
@@ -261,9 +261,9 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
           {question.verb}
         </div>
         <div className="flex justify-center space-x-2 text-sm">
-          <span className="px-4 py-1.5 bg-blue-100 text-blue-700 rounded-full font-medium text-sm">{question.pronoun}</span>
-          <span className="px-4 py-1.5 bg-purple-100 text-purple-700 rounded-full font-medium text-sm">{question.tense}</span>
-          <span className="px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-full font-medium text-sm">{question.mood}</span>
+          <span className="px-4 py-1.5 bg-pink-500 text-white rounded-full font-medium text-sm">{question.pronoun}</span>
+          <span className="px-4 py-1.5 bg-yellow-500 text-white rounded-full font-medium text-sm">{question.tense}</span>
+          <span className="px-4 py-1.5 bg-indigo-900 text-white rounded-full font-medium text-sm">{question.mood}</span>
         </div>
       </div>
 
@@ -284,7 +284,7 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
             <button
               type="submit"
               disabled={!userAnswer.trim()}
-              className="w-full bg-blue-500 text-white py-3 px-4 rounded-xl hover:bg-blue-600 disabled:bg-slate-300 disabled:cursor-not-allowed font-semibold text-lg transition-colors"
+              className="w-full bg-orange-400 text-white py-3 px-4 rounded-xl hover:bg-orange-500 disabled:bg-orange-200 disabled:cursor-not-allowed font-semibold text-lg transition-colors"
             >
               Submit Answer
             </button>
@@ -475,15 +475,15 @@ export default function FlashcardGame() {
   const currentQuestion = questions[currentIndex];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-purple-50 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-pink-300 via-orange-300 to-indigo-400 py-8 px-4">
       <div className="max-w-4xl mx-auto space-y-8 relative z-10">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-slate-800 mb-2">
+          <h1 className="text-4xl font-bold text-indigo-900 mb-2">
             Spanish Flashcards
           </h1>
-          <p className="text-lg text-slate-600 mb-6">Practice your conjugations</p>
-          <div className="flex justify-center space-x-8 text-lg font-medium text-slate-700 bg-white/60 backdrop-blur-sm rounded-xl py-3 px-6 border border-white/80 shadow-sm">
+          <p className="text-lg text-indigo-700 mb-6">Practice your conjugations</p>
+          <div className="flex justify-center space-x-8 text-lg font-medium text-yellow-700 bg-white/60 backdrop-blur-sm rounded-xl py-3 px-6 border border-white/80 shadow-sm">
             <div>
               <span>Card {currentIndex + 1}</span>
             </div>
