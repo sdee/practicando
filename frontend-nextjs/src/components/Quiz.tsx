@@ -260,7 +260,7 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
   return (
     <animated.div 
       className={`
-        w-96 h-80 mx-auto p-6 rounded-2xl shadow-lg border-2 transition-all duration-300 flex flex-col justify-between hover:shadow-xl
+        w-[480px] h-96 mx-auto p-6 rounded-2xl shadow-lg border-2 transition-all duration-300 flex flex-col justify-between hover:shadow-xl
         ${state === 'correct' ? 'border-emerald-300 shadow-emerald-200/30' : 
           state === 'incorrect' ? 'border-rose-300 shadow-rose-200/30' : 
           'border-slate-300 shadow-slate-200/30'}
@@ -288,7 +288,7 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
       </div>
 
       {/* Card Content */}
-      <div className="flex-1 flex flex-col justify-center">
+      <div className="flex-1 flex flex-col justify-center min-h-[200px]">
         {!showAnswer && (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -523,7 +523,7 @@ export default function FlashcardGame() {
         />
 
         {/* Flashcard Container */}
-        <div className="flex justify-center items-center" style={{ minHeight: '360px' }}>
+        <div className="flex justify-center items-center" style={{ minHeight: '400px' }}>
           <Flashcard 
             key={`${currentQuestion.verb}-${currentQuestion.pronoun}-${currentIndex}`}
             question={currentQuestion} 
