@@ -261,9 +261,9 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
           {question.verb}
         </div>
         <div className="flex justify-center space-x-2 text-sm">
-          <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">{question.pronoun}</span>
-          <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">{question.tense}</span>
-          <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full font-medium">{question.mood}</span>
+          <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium text-sm">{question.pronoun}</span>
+          <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full font-medium text-sm">{question.tense}</span>
+          <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full font-medium text-sm">{question.mood}</span>
         </div>
       </div>
 
@@ -382,11 +382,11 @@ export default function FlashcardGame() {
 
   const handleNext = () => {
     setAnswerState('unanswered');
-    
+
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      // Reload questions when we run out
+      // Load more questions when we run out
       loadQuestions();
     }
   };
@@ -485,7 +485,7 @@ export default function FlashcardGame() {
           <p className="text-lg text-slate-600 mb-6">Practice your conjugations</p>
           <div className="flex justify-center space-x-8 text-lg font-medium text-slate-700 bg-white/60 backdrop-blur-sm rounded-xl py-3 px-6 border border-white/80 shadow-sm">
             <div>
-              <span>Card {currentIndex + 1} of {questions.length}</span>
+              <span>Card {currentIndex + 1}</span>
             </div>
             <div>
               <span>Score: {stats.correct}/{stats.total} ({stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0}%)</span>
@@ -511,19 +511,6 @@ export default function FlashcardGame() {
             onNext={handleNext}
             state={answerState}
           />
-        </div>
-
-        {/* Progress Bar */}
-        <div className="w-full max-w-md mx-auto">
-          <div className="bg-white/60 rounded-full h-3 border border-slate-200 backdrop-blur-sm">
-            <div 
-              className="bg-gradient-to-r from-blue-400 to-purple-500 h-full rounded-full transition-all duration-500"
-              style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
-            />
-          </div>
-          <div className="text-center mt-2">
-            <span className="text-slate-600 font-medium text-sm">Keep going!</span>
-          </div>
         </div>
       </div>
     </div>
