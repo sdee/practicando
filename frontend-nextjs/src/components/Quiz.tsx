@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSpring, animated } from '@react-spring/web';
 import { Question, AnswerState, FlashcardState } from '@/types/flashcard';
 import { fetchQuestions, Filters } from '@/services/api';
@@ -221,11 +221,41 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
     onAnswer(isCorrect, userAnswer);
   };
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     setUserAnswer('');
     setShowAnswer(false);
     onNext(); // Call the parent's function to advance to next question
-  };
+  }, [onNext]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle keyboard shortcuts when showing answer
+      if (!showAnswer) return;
+
+      switch (e.key.toLowerCase()) {
+        case 'n':
+        case 'arrowright':
+          e.preventDefault();
+          handleNext();
+          break;
+        // Future keyboard shortcuts can be added here
+        // case 'r': // for retry/restart
+        // case 'f': // for favorite
+        // case 'h': // for hint
+        default:
+          break;
+      }
+    };
+
+    // Add event listener
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showAnswer, handleNext]); // Include handleNext in dependencies
 
   return (
     <animated.div 
@@ -312,10 +342,13 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
         <div className="pt-4">
           <button
             onClick={handleNext}
-            className="w-full bg-slate-500 text-white py-3 px-4 rounded-xl hover:bg-slate-600 font-semibold text-lg transition-colors"
+            className="w-full bg-slate-500 text-white py-3 px-4 rounded-xl hover:bg-slate-600 font-semibold text-lg transition-colors mb-2"
           >
             Next Card
           </button>
+          <div className="text-center text-xs text-slate-400">
+            Press 'N' or → to continue
+          </div>
         </div>
       )}
     </animated.div>
