@@ -480,9 +480,9 @@ export default function FlashcardGame() {
         {/* Header */}
         <div className="text-center">
           <h1 className="text-4xl font-bold text-indigo-900 mb-2">
-            Spanish Flashcards
+            Spanish Conjugations in a Flash!
           </h1>
-          <p className="text-lg text-indigo-700 mb-6">Practice your conjugations</p>
+          <p className="text-lg text-indigo-700 mb-6">Practico. Practicas. Practicamos</p>
           <div className="flex justify-center space-x-8 text-lg font-medium text-yellow-700 bg-white/60 backdrop-blur-sm rounded-xl py-3 px-6 border border-white/80 shadow-sm">
             <div>
               <span>Card {currentIndex + 1}</span>
