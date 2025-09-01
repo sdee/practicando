@@ -360,21 +360,21 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
         )}
 
         {showAnswer && (
-          <div className="text-center space-y-2">
-            <div className={`text-2xl font-bold ${state === 'correct' ? 'text-emerald-600' : 'text-rose-600'}`}>
+          <div className="text-center space-y-3">
+            <div className={`text-xl font-bold ${state === 'correct' ? 'text-emerald-600' : 'text-rose-600'}`}>
               {state === 'correct' ? 'Correct!' : 'Incorrect'}
             </div>
             
-            <div className="bg-white/80 backdrop-blur-sm p-1 rounded-xl border border-slate-200">
-              <div className="mb-2">
-                <span className="text-slate-600 text-sm font-medium">Your answer: </span>
+            <div className="space-y-2">
+              <div className="w-full px-4 py-3 border-2 border-transparent rounded-xl text-center font-medium bg-white text-lg">
+                <span className="text-slate-600 text-base">Your answer: </span>
                 <span className={`font-semibold ${state === 'correct' ? 'text-emerald-600' : 'text-rose-600'}`}>
                   {userAnswer}
                 </span>
               </div>
               {state === 'incorrect' && (
-                <div>
-                  <span className="text-slate-600 text-sm font-medium">Correct answer: </span>
+                <div className="w-full px-4 py-3 border-2 border-transparent rounded-xl text-center font-medium bg-white text-lg">
+                  <span className="text-slate-600 text-base">Correct answer: </span>
                   <span className="text-emerald-600 font-semibold">
                     {guess.correct_answer}
                   </span>
@@ -387,7 +387,7 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
 
       {/* Card Footer */}
       {showAnswer && (
-        <div className="pt-4">
+        <div className="pt-2">
           <button
             onClick={handleNext}
             className="w-full bg-slate-500 text-white py-3 px-4 rounded-xl hover:bg-slate-600 font-semibold text-lg transition-colors mb-2"
