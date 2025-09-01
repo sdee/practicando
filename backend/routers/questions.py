@@ -7,8 +7,6 @@ from spanishconjugator import Conjugator
 
 # Import from dependencies instead of main to avoid circular imports
 from dependencies import get_conjugator, get_question_service
-from models import TenseEnum, MoodEnum, PronounEnum
-from utils import validate_enum_value
 from services import QuestionService
 
 router = APIRouter()
@@ -18,24 +16,6 @@ class FilterParams(BaseModel):
     tense: List[str] = Field(default=["present"], description="Filter by tenses")
     mood: List[str] = Field(default=["indicative"], description="Filter by moods")
     limit: int = Field(1, ge=1, le=100, description="Number of questions to return")
-    
-    @validator('pronoun')
-    def validate_pronouns(cls, v):
-        for pronoun in v:
-            validate_enum_value(PronounEnum, pronoun)
-        return v
-    
-    @validator('tense')
-    def validate_tenses(cls, v):
-        for tense in v:
-            validate_enum_value(TenseEnum, tense)
-        return v
-    
-    @validator('mood')
-    def validate_moods(cls, v):
-        for mood in v:
-            validate_enum_value(MoodEnum, mood)
-        return v
 
 @router.get("/")
 def get_questions(

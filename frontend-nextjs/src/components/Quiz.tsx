@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Question, AnswerState, FlashcardState } from '@/types/flashcard';
-import { fetchQuestions, Filters } from '@/services/api';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { Question, AnswerState, Round, Guess, GamePhase, RoundState, Filters, DEFAULT_NUM_QUESTIONS, QUESTION_COUNT_OPTIONS } from '@/types/flashcard';
+import { createRound, transitionRound, completeRound, getActiveRound, submitGuess } from '@/services/api';
 
 interface PronounOption {
   value: string;
@@ -16,9 +16,49 @@ interface FilterPanelProps {
   filters: Filters;
   onFiltersChange: (filters: Filters) => void;
   onApply: () => void;
+  hasActiveRound: boolean;
 }
 
-function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply }: FilterPanelProps) {
+interface FilterWarningModalProps {
+  isOpen: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function FilterWarningModal({ isOpen, onConfirm, onCancel }: FilterWarningModalProps) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl p-6 max-w-md mx-auto shadow-xl border">
+        <div className="text-center">
+          <div className="text-3xl mb-4">⚠️</div>
+          <h3 className="text-xl font-bold text-slate-800 mb-3">Start New Round?</h3>
+          <p className="text-slate-600 mb-6">
+            Changing filters will complete your current round and start a new one. 
+            Your progress will be saved.
+          </p>
+          <div className="flex space-x-3">
+            <button
+              onClick={onCancel}
+              className="flex-1 bg-slate-200 text-slate-700 py-3 px-4 rounded-lg hover:bg-slate-300 font-medium transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              className="flex-1 bg-orange-400 text-white py-3 px-4 rounded-lg hover:bg-orange-500 font-medium transition-colors"
+            >
+              Start New Round
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply, hasActiveRound }: FilterPanelProps) {
   const pronounOptions: PronounOption[] = [
     { value: 'yo', label: 'yo', includes: ['yo'] },
     { value: 'tu', label: 'tú', includes: ['tu'] },
@@ -105,6 +145,14 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply }: Fi
       
       <div style={{ maxHeight: isOpen ? '1000px' : '0px', opacity: isOpen ? 1 : 0, overflow: 'hidden' }}>
         <div className="p-4 border-t border-slate-200">
+          {hasActiveRound && (
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                ⚠️ You have an active round. Changing filters will start a new round.
+              </p>
+            </div>
+          )}
+          
           <div className="grid md:grid-cols-3 gap-6">
             {/* Pronouns */}
             <div>
@@ -160,6 +208,36 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply }: Fi
               </div>
             </div>
           </div>
+
+          {/* Number of Questions */}
+          <div className="mt-4">
+            <h4 className="text-sm font-medium text-slate-700 mb-3">Number of Questions</h4>
+            <div className="grid grid-cols-3 gap-3">
+              {QUESTION_COUNT_OPTIONS.map((count) => (
+                <button
+                  key={count}
+                  type="button"
+                  onClick={() => {
+                    console.log('🔢 Question count button clicked:', count);
+                    console.log('Current filters before change:', filters);
+                    const newFilters = { ...filters, num_questions: count };
+                    console.log('New filters after change:', newFilters);
+                    onFiltersChange(newFilters);
+                  }}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    (filters.num_questions || DEFAULT_NUM_QUESTIONS) === count
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {count}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500 mt-2">
+              Current: {filters.num_questions || DEFAULT_NUM_QUESTIONS} questions
+            </p>
+          </div>
           
           <div className="mt-6 flex justify-end">
             <button
@@ -167,7 +245,7 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply }: Fi
               disabled={filters.pronouns.length === 0 || filters.tenses.length === 0 || filters.moods.length === 0}
               className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:bg-slate-300 disabled:cursor-not-allowed font-medium transition-colors"
             >
-              Apply Filters
+              {hasActiveRound ? 'Start New Round' : 'Apply Filters'}
             </button>
           </div>
         </div>
@@ -177,41 +255,40 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply }: Fi
 }
 
 interface FlashcardProps {
-  question: Question;
+  guess: Guess;
+  questionNumber: number;
+  totalQuestions: number;
   onAnswer: (correct: boolean, userAnswer: string) => void;
   onNext: () => void;
   state: AnswerState;
 }
 
-function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
+function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, state }: FlashcardProps) {
   const [userAnswer, setUserAnswer] = useState('');
   const [showAnswer, setShowAnswer] = useState(false);
 
   // Reset state when question changes
   useEffect(() => {
-    setUserAnswer('');
-    setShowAnswer(false);
-  }, [question.verb, question.pronoun, question.tense, question.mood]);
+    setUserAnswer(guess.user_answer || '');
+    setShowAnswer(guess.user_answer !== undefined && guess.user_answer !== null);
+  }, [guess.id]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!userAnswer.trim()) return;
 
-    const isCorrect = userAnswer.toLowerCase().trim() === (question.answer || '').toLowerCase();
+    const isCorrect = userAnswer.toLowerCase().trim() === guess.correct_answer.toLowerCase();
     setShowAnswer(true);
     onAnswer(isCorrect, userAnswer);
   };
 
   const handleNext = useCallback(() => {
-    setUserAnswer('');
-    setShowAnswer(false);
-    onNext(); // Call the parent's function to advance to next question
+    onNext();
   }, [onNext]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle keyboard shortcuts when showing answer
       if (!showAnswer) return;
 
       switch (e.key.toLowerCase()) {
@@ -220,23 +297,14 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
           e.preventDefault();
           handleNext();
           break;
-        // Future keyboard shortcuts can be added here
-        // case 'r': // for retry/restart
-        // case 'f': // for favorite
-        // case 'h': // for hint
-        default:
-          break;
       }
     };
 
-    // Add event listener
     document.addEventListener('keydown', handleKeyDown);
-
-    // Cleanup
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [showAnswer, handleNext]); // Include handleNext in dependencies
+  }, [showAnswer, handleNext]);
 
   return (
     <div 
@@ -255,15 +323,15 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
       {/* Card Header */}
       <div className="text-center">
         <div className="text-sm font-medium text-slate-500 mb-2 tracking-wide uppercase">
-          Spanish Conjugation
+          Question {questionNumber} of {totalQuestions}
         </div>
         <div className="text-3xl font-bold text-slate-800 mb-3">
-          {question.verb}
+          {guess.verb}
         </div>
         <div className="flex justify-center space-x-2 text-sm">
-          <span className="px-4 py-1.5 bg-pink-500 text-white rounded-full font-medium text-sm">{question.pronoun}</span>
-          <span className="px-4 py-1.5 bg-yellow-500 text-white rounded-full font-medium text-sm">{question.tense}</span>
-          <span className="px-4 py-1.5 bg-indigo-900 text-white rounded-full font-medium text-sm">{question.mood}</span>
+          <span className="px-4 py-1.5 bg-pink-500 text-white rounded-full font-medium text-sm">{guess.pronoun}</span>
+          <span className="px-4 py-1.5 bg-yellow-500 text-white rounded-full font-medium text-sm">{guess.tense}</span>
+          <span className="px-4 py-1.5 bg-indigo-900 text-white rounded-full font-medium text-sm">{guess.mood}</span>
         </div>
       </div>
 
@@ -308,7 +376,7 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
                 <div>
                   <span className="text-slate-600 text-sm font-medium">Correct answer: </span>
                   <span className="text-emerald-600 font-semibold">
-                    {question.answer || 'No answer available'}
+                    {guess.correct_answer}
                   </span>
                 </div>
               )}
@@ -324,7 +392,7 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
             onClick={handleNext}
             className="w-full bg-slate-500 text-white py-3 px-4 rounded-xl hover:bg-slate-600 font-semibold text-lg transition-colors mb-2"
           >
-            Next Card
+            {questionNumber < totalQuestions ? 'Next Card' : 'Finish Round'}
           </button>
           <div className="text-center text-xs text-slate-400">
             Press 'N' or → to continue
@@ -335,74 +403,382 @@ function Flashcard({ question, onAnswer, onNext, state }: FlashcardProps) {
   );
 }
 
-export default function FlashcardGame() {
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [answerState, setAnswerState] = useState<AnswerState>('unanswered');
-  const [stats, setStats] = useState({ correct: 0, total: 0 });
-  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+interface RoundCompleteProps {
+  round: Round;
+  score: { correct: number; total: number };
+  onStartNewRound: (filters?: Filters) => void;
+  onChangeSettings: () => void;
+}
+
+function RoundComplete({ round, score, onStartNewRound, onChangeSettings }: RoundCompleteProps) {
+  const percentage = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
   
-  // Default filters: yo, tu, present, indicative
+  // Get performance emoji and message
+  const getPerformanceEmoji = (percentage: number) => {
+    if (percentage >= 90) return "🏆";
+    if (percentage >= 80) return "🎉";
+    if (percentage >= 70) return "👍";
+    if (percentage >= 60) return "😊";
+    return "💪";
+  };
+  
+  const getPerformanceMessage = (percentage: number) => {
+    if (percentage >= 90) return "Outstanding!";
+    if (percentage >= 80) return "Great job!";
+    if (percentage >= 70) return "Well done!";
+    if (percentage >= 60) return "Good effort!";
+    return "Keep practicing!";
+  };
+
+  // Get last used filters for quick restart option
+  const getLastUsedFilters = (): Filters => {
+    const filters: Filters = {
+      pronouns: round.filters?.pronouns || ['yo', 'tu'],
+      tenses: round.filters?.tenses || ['present'],
+      moods: round.filters?.moods || ['indicative'],
+      num_questions: round.num_questions || DEFAULT_NUM_QUESTIONS
+    };
+    return filters;
+  };
+
+  const formatFilters = (filters: Filters) => {
+    const pronounStr = filters.pronouns.join(', ');
+    const tenseStr = filters.tenses.join(', ');
+    const moodStr = filters.moods.join(', ');
+    const questionCount = filters.num_questions || DEFAULT_NUM_QUESTIONS;
+    return `${pronounStr} • ${tenseStr} • ${moodStr} • ${questionCount} questions`;
+  };
+
+  return (
+    <div className="w-[500px] bg-gradient-to-br from-white/30 via-purple-50/40 to-pink-50/30 backdrop-blur-md rounded-2xl shadow-2xl border border-white/30 overflow-hidden transition-all duration-500 ease-out transform hover:scale-[1.02]">
+      {/* Header with emoji and title */}
+      <div className="text-center pt-8 pb-4 px-8">
+        <div className="text-5xl mb-4 animate-bounce">
+          {getPerformanceEmoji(percentage)}
+        </div>
+        <h2 className="text-3xl font-bold text-slate-800 mb-3">
+          Round Complete!
+        </h2>
+        <div className="text-lg text-slate-700">
+          {getPerformanceMessage(percentage)}
+        </div>
+      </div>
+
+      {/* Score display - main focus */}
+      <div className="text-center px-8 pb-6">
+        <div className="text-6xl font-bold text-slate-800 mb-3 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+          {percentage}%
+        </div>
+        <div className="text-xl text-slate-700 mb-6">
+          {score.correct} out of {score.total} correct
+        </div>
+      </div>
+
+      {/* Settings used section - improved layout */}
+      <div className="px-8 pb-6">
+        <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+          <div className="text-sm font-medium text-slate-700 mb-2">Settings used:</div>
+          <div className="text-base text-slate-800">
+            {formatFilters(getLastUsedFilters())}
+          </div>
+        </div>
+      </div>
+
+      {/* Action buttons - better spacing and styling */}
+      <div className="px-8 pb-8 space-y-3">
+        {/* Quick restart with same settings */}
+        <button
+          onClick={() => onStartNewRound(getLastUsedFilters())}
+          className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
+        >
+          <div className="text-lg">Same Settings Again</div>
+          <div className="text-sm text-purple-200 mt-1">
+            {formatFilters(getLastUsedFilters())}
+          </div>
+        </button>
+
+        {/* Change settings */}
+        <button
+          onClick={onChangeSettings}
+          className="w-full bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
+        >
+          <div className="text-lg">Change Settings</div>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function FlashcardGame() {
+  const [gamePhase, setGamePhase] = useState<GamePhase>('loading');
+  const [roundState, setRoundState] = useState<RoundState>({
+    currentRound: null,
+    guesses: [],
+    currentGuessIndex: 0,
+    isComplete: false,
+    score: { correct: 0, total: 0 }
+  });
+  const [answerState, setAnswerState] = useState<AnswerState>('unanswered');
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [showFilterWarning, setShowFilterWarning] = useState(false);
+  const [pendingFilters, setPendingFilters] = useState<Filters | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Default filters: yo, tu, present, indicative with default question count
   const [filters, setFilters] = useState<Filters>({
     pronouns: ['yo', 'tu'],
     tenses: ['present'],
-    moods: ['indicative']
+    moods: ['indicative'],
+    num_questions: DEFAULT_NUM_QUESTIONS
   });
 
-  const loadQuestions = async (useFilters?: Filters) => {
+  // Initialize app - check for active round or create new one
+  useEffect(() => {
+    initializeApp();
+  }, []);
+
+  const initializeApp = async () => {
     try {
-      setLoading(true);
+      setGamePhase('loading');
       setError(null);
-      const filtersToUse = useFilters || filters;
-      const response = await fetchQuestions(15, filtersToUse);
-      console.log('Received questions:', response.questions); // Debug log
-      setQuestions(response.questions);
-      setCurrentIndex(0);
+
+      // Try to get existing active round first
+      try {
+        const activeRoundData = await getActiveRound();
+        setRoundState({
+          currentRound: activeRoundData.round,
+          guesses: activeRoundData.guesses,
+          currentGuessIndex: findCurrentQuestionIndex(activeRoundData.guesses),
+          isComplete: false,
+          score: calculateScore(activeRoundData.guesses)
+        });
+        setGamePhase('playing');
+        return;
+      } catch (err) {
+        // No active round found, create new one
+      }
+
+      // Validate filters before creating round
+      const defaultFilters: Filters = {
+        pronouns: ['yo', 'tu'],
+        tenses: ['present'],
+        moods: ['indicative'],
+        num_questions: DEFAULT_NUM_QUESTIONS
+      };
+
+      if (!filters.pronouns?.length || !filters.tenses?.length || !filters.moods?.length) {
+        console.warn('Invalid filters detected, using defaults:', filters);
+        setFilters(defaultFilters);
+      }
+
+      // Create new round with validated filters
+      const filtersToUse = (filters.pronouns?.length && filters.tenses?.length && filters.moods?.length) 
+        ? { ...filters, num_questions: filters.num_questions || DEFAULT_NUM_QUESTIONS }
+        : defaultFilters;
+
+      const roundData = await createRound(filtersToUse);
+      setRoundState({
+        currentRound: roundData.round,
+        guesses: roundData.guesses,
+        currentGuessIndex: 0,
+        isComplete: false,
+        score: { correct: 0, total: 0 }
+      });
+      setGamePhase('playing');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load questions');
-    } finally {
-      setLoading(false);
+      setError(err instanceof Error ? err.message : 'Failed to initialize app');
+      setGamePhase('error');
     }
   };
 
-  useEffect(() => {
-    loadQuestions();
-  }, []);
+  const findCurrentQuestionIndex = (guesses: Guess[]): number => {
+    const firstUnanswered = guesses.findIndex(g => g.user_answer === null || g.user_answer === undefined);
+    return firstUnanswered === -1 ? guesses.length - 1 : firstUnanswered;
+  };
+
+  const calculateScore = (guesses: Guess[]): { correct: number; total: number } => {
+    const answered = guesses.filter(g => g.user_answer !== null && g.user_answer !== undefined);
+    const correct = answered.filter(g => g.is_correct === true).length;
+    return { correct, total: answered.length };
+  };
 
   const handleAnswer = (correct: boolean, userAnswer: string) => {
     setAnswerState(correct ? 'correct' : 'incorrect');
-    setStats(prev => ({
-      correct: prev.correct + (correct ? 1 : 0),
-      total: prev.total + 1
-    }));
-    // Removed auto-advance - user must click "Next Card" button
+    
+    // Update the current guess with the answer
+    setRoundState(prev => {
+      const updatedGuesses = [...prev.guesses];
+      const currentGuess = updatedGuesses[prev.currentGuessIndex];
+      
+      updatedGuesses[prev.currentGuessIndex] = {
+        ...currentGuess,
+        user_answer: userAnswer,
+        is_correct: correct
+      };
+      
+      // Submit guess to backend asynchronously (fire-and-forget)
+      if (currentGuess.id) {
+        submitGuess(currentGuess.id, userAnswer, correct).catch(error => {
+          console.error('Failed to submit guess to backend:', error);
+          // Don't show error to user - this is background sync
+        });
+      }
+      
+      return {
+        ...prev,
+        guesses: updatedGuesses,
+        score: calculateScore(updatedGuesses)
+      };
+    });
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     setAnswerState('unanswered');
+    
+    setRoundState(prev => {
+      const nextIndex = prev.currentGuessIndex + 1;
+      
+      if (nextIndex >= prev.guesses.length) {
+        // Round is complete - add smooth transition delay
+        setTimeout(() => {
+          setGamePhase('round_complete');
+        }, 300);
+        
+        // Complete the round on the backend
+        if (prev.currentRound) {
+          completeRound(prev.currentRound.id).catch(console.error);
+        }
+        
+        return {
+          ...prev,
+          currentGuessIndex: prev.guesses.length - 1,
+          isComplete: true
+        };
+      }
+      
+      return {
+        ...prev,
+        currentGuessIndex: nextIndex
+      };
+    });
+  };
 
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      // Load more questions when we run out
-      loadQuestions();
+  const handleFiltersApply = async () => {
+    console.log('🔧 handleFiltersApply called');
+    console.log('Current filters state:', filters);
+    console.log('Round state:', { isComplete: roundState.isComplete, hasCurrentRound: !!roundState.currentRound });
+    
+    if (roundState.currentRound && !roundState.isComplete) {
+      // Show warning for active round
+      console.log('Active round detected, showing warning');
+      setPendingFilters(filters);
+      setShowFilterWarning(true);
+      return;
+    }
+    
+    // No active round or round is complete, just create new round
+    console.log('No active round, starting new round with filters:', filters);
+    await startNewRound(filters);
+  };
+
+  const handleFilterWarningConfirm = async () => {
+    setShowFilterWarning(false);
+    if (pendingFilters && roundState.currentRound) {
+      try {
+        const transitionData = await transitionRound(roundState.currentRound.id, pendingFilters);
+        
+        // Brief moment to show completed round score (optional)
+        setRoundState({
+          currentRound: transitionData.new_round,
+          guesses: transitionData.guesses,
+          currentGuessIndex: 0,
+          isComplete: false,
+          score: { correct: 0, total: 0 }
+        });
+        setGamePhase('playing');
+        setFilterPanelOpen(false);
+        
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to transition round');
+        setGamePhase('error');
+      }
+    }
+    setPendingFilters(null);
+  };
+
+  const handleFilterWarningCancel = () => {
+    setShowFilterWarning(false);
+    setPendingFilters(null);
+  };
+
+  const startNewRound = async (filtersToUse: Filters = filters) => {
+    try {
+      console.log('🚀 startNewRound called with filters:', filtersToUse);
+      
+      // Validate filters before proceeding
+      if (!filtersToUse.pronouns?.length || !filtersToUse.tenses?.length || !filtersToUse.moods?.length) {
+        console.error('Invalid filters provided to startNewRound:', filtersToUse);
+        setError('Invalid filters selected. Please check your selection.');
+        setGamePhase('error');
+        return;
+      }
+
+      // Ensure num_questions is set
+      const completeFilters = {
+        ...filtersToUse,
+        num_questions: filtersToUse.num_questions || DEFAULT_NUM_QUESTIONS
+      };
+
+      console.log('💫 Complete filters being sent to createRound:', completeFilters);
+
+      setGamePhase('loading');
+      setError(null);
+      
+      const roundData = await createRound(completeFilters);
+      
+      setRoundState({
+        currentRound: roundData.round,
+        guesses: roundData.guesses,
+        currentGuessIndex: 0,
+        isComplete: false,
+        score: { correct: 0, total: 0 }
+      });
+      setGamePhase('playing');
+      setFilterPanelOpen(false);
+      
+    } catch (err) {
+      console.error('Error starting new round:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to start new round';
+      setError(errorMessage);
+      setGamePhase('error');
     }
   };
 
-  const handleFiltersApply = () => {
-    setFilterPanelOpen(false); // Auto-collapse the panel
-    loadQuestions(filters); // Load questions with new filters
+  const handleStartNewRound = async (providedFilters?: Filters) => {
+    if (providedFilters) {
+      // Direct start with provided filters
+      setGamePhase('loading');
+      await startNewRound(providedFilters);
+    } else {
+      // Open filter panel for user selection
+      handleChangeSettings();
+    }
+    // Reset answer state
+    setAnswerState('unanswered');
   };
 
-  if (loading) {
+  const handleChangeSettings = () => {
+    setGamePhase('filter_selection');
+    setFilterPanelOpen(true);
+  };
+
+  if (gamePhase === 'loading') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-slate-300 border-t-slate-600 rounded-full animate-spin mx-auto mb-4"></div>
           <div className="text-xl font-medium text-slate-700 mb-2">
-            Loading questions...
+            {roundState.currentRound ? 'Loading round...' : 'Starting new round...'}
           </div>
           <div className="text-slate-500">
             Please wait
@@ -412,14 +788,15 @@ export default function FlashcardGame() {
     );
   }
 
-  if (error) {
+  if (gamePhase === 'error') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-100 via-red-50 to-rose-50 flex items-center justify-center">
         <div className="text-center bg-white/60 backdrop-blur-sm rounded-2xl p-8 border border-white/80 shadow-lg">
+          <div className="text-5xl mb-4">⚠️</div>
           <div className="text-xl font-bold text-slate-700 mb-4">Something went wrong</div>
           <div className="text-slate-600 mb-6">Error: {error}</div>
           <button
-            onClick={() => loadQuestions()}
+            onClick={initializeApp}
             className="bg-blue-500 text-white px-6 py-3 rounded-xl hover:bg-blue-600 font-semibold transition-colors"
           >
             Try Again
@@ -429,37 +806,48 @@ export default function FlashcardGame() {
     );
   }
 
-  if (questions.length === 0) {
+  if (gamePhase === 'filter_selection') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-100 via-yellow-50 to-orange-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-xl font-medium text-slate-700">
-            No questions available
-          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">
+            Choose Your Practice Settings
+          </h2>
+          <p className="text-slate-600 mb-6">
+            Select the verb forms you want to practice
+          </p>
+          
+          {filterPanelOpen && (
+            <FilterPanel
+              isOpen={true}
+              filters={filters}
+              onFiltersChange={setFilters}
+              onApply={handleFiltersApply}
+              onToggle={() => setFilterPanelOpen(false)}
+              hasActiveRound={false}
+            />
+          )}
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (gamePhase === 'round_complete' && roundState.currentRound) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-100 via-red-50 to-rose-50 flex items-center justify-center">
-        <div className="text-center bg-white/60 backdrop-blur-sm rounded-2xl p-8 border border-white/80 shadow-lg">
-          <div className="text-5xl mb-4">�</div>
-          <div className="text-xl font-bold text-slate-700 mb-4">Oops! Something went wrong</div>
-          <div className="text-lg text-slate-600 mb-6">Error: {error}</div>
-          <button
-            onClick={() => loadQuestions()}
-            className="bg-blue-500 text-white px-6 py-3 rounded-xl hover:bg-blue-600 font-semibold transition-colors"
-          >
-            Try Again 🔄
-          </button>
+      <div className="min-h-screen bg-gradient-to-br from-pink-300 via-orange-300 to-indigo-400 py-8 px-4 flex items-center justify-center transition-all duration-700 ease-in-out">
+        <div className="animate-fade-in-up">
+          <RoundComplete
+            round={roundState.currentRound}
+            score={roundState.score}
+            onStartNewRound={handleStartNewRound}
+            onChangeSettings={handleChangeSettings}
+          />
         </div>
       </div>
     );
   }
 
-  if (questions.length === 0) {
+  if (!roundState.currentRound || roundState.guesses.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-100 via-yellow-50 to-orange-50 flex items-center justify-center">
         <div className="text-center">
@@ -472,7 +860,7 @@ export default function FlashcardGame() {
     );
   }
 
-  const currentQuestion = questions[currentIndex];
+  const currentGuess = roundState.guesses[roundState.currentGuessIndex];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-300 via-orange-300 to-indigo-400 py-8 px-4">
@@ -485,10 +873,10 @@ export default function FlashcardGame() {
           <p className="text-lg text-indigo-700 mb-6">Practico. Practicas. Practicamos</p>
           <div className="flex justify-center space-x-8 text-lg font-medium text-yellow-700 bg-white/60 backdrop-blur-sm rounded-xl py-3 px-6 border border-white/80 shadow-sm">
             <div>
-              <span>Card {currentIndex + 1}</span>
+              <span>Question {roundState.currentGuessIndex + 1} of {roundState.guesses.length}</span>
             </div>
             <div>
-              <span>Score: {stats.correct}/{stats.total} ({stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0}%)</span>
+              <span>Score: {roundState.score.correct}/{roundState.score.total} ({roundState.score.total > 0 ? Math.round((roundState.score.correct / roundState.score.total) * 100) : 0}%)</span>
             </div>
           </div>
         </div>
@@ -500,19 +888,29 @@ export default function FlashcardGame() {
           filters={filters}
           onFiltersChange={setFilters}
           onApply={handleFiltersApply}
+          hasActiveRound={!roundState.isComplete}
         />
 
         {/* Flashcard Container */}
         <div className="flex justify-center items-center" style={{ minHeight: '400px' }}>
           <Flashcard 
-            key={`${currentQuestion.verb}-${currentQuestion.pronoun}-${currentIndex}`}
-            question={currentQuestion} 
+            key={currentGuess.id}
+            guess={currentGuess}
+            questionNumber={roundState.currentGuessIndex + 1}
+            totalQuestions={roundState.guesses.length}
             onAnswer={handleAnswer}
             onNext={handleNext}
             state={answerState}
           />
         </div>
       </div>
+
+      {/* Filter Warning Modal */}
+      <FilterWarningModal
+        isOpen={showFilterWarning}
+        onConfirm={handleFilterWarningConfirm}
+        onCancel={handleFilterWarningCancel}
+      />
     </div>
   );
 }

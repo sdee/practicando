@@ -11,12 +11,12 @@ import os
 import psycopg2
 
 from db import get_db, get_engine
-from models import Question, Base
+from models import Base
 from spanishconjugator import Conjugator
 from dependencies import set_conjugator
 
 # Import routers
-from routers import questions
+from routers import questions, rounds
 
 app = FastAPI()
 
@@ -42,6 +42,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(questions.router, prefix="/api/questions", tags=["questions"])
+app.include_router(rounds.router, prefix="/api", tags=["rounds"])
 
 
 class HealthResponse(BaseModel):

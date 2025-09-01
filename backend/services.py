@@ -3,11 +3,14 @@ Service layer for business logic.
 Contains reusable functions that can be used across different routers/endpoints.
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from spanishconjugator import Conjugator
+from sqlalchemy.orm import Session
+from sqlalchemy import func
 import random
 
 from utils import normalize_pronoun, extract_conjugation_from_response
+from models import Round, Guess, Verb
 
 
 class QuestionService:
@@ -111,7 +114,388 @@ class QuestionService:
             return None
 
 
+class RoundService:
+    """Service for managing rounds and their guesses"""
+    
+    def __init__(self, question_service: QuestionService, db: Session):
+        self.question_service = question_service
+        self.db = db
+    
+    def create_round(
+        self,
+        filters: Dict[str, List[str]],
+        num_questions: int = 12,
+        user_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Create a new round with pre-generated guesses.
+        
+        Args:
+            filters: Dictionary containing pronouns, tenses, and moods lists
+            num_questions: Number of questions to generate (default 12)
+            user_id: Optional user ID for multi-user support
+            
+        Returns:
+            Dictionary containing round data and all guesses
+        """
+        # Create the round record
+        round_record = Round(
+            user_id=user_id,
+            started_at=func.now(),
+            filters=filters,
+            num_questions=num_questions,
+            num_correct_answers=0,
+            ended_at=None
+        )
+        self.db.add(round_record)
+        self.db.flush()  # Get the round ID
+        
+        # Generate questions using existing QuestionService
+        questions = self.question_service.generate_questions(
+            pronouns=filters['pronouns'],
+            tenses=filters['tenses'],
+            moods=filters['moods'],
+            limit=num_questions
+        )
+        
+        # Check if we got enough questions
+        if len(questions) < num_questions:
+            self.db.rollback()
+            raise ValueError(
+                f"Could not generate enough questions. "
+                f"Requested {num_questions}, got {len(questions)}. "
+                f"Try different filters or reduce the number of questions."
+            )
+        
+        guesses = []
+        for question in questions:
+            # Get or create verb record
+            verb = self._get_or_create_verb(question['verb'])
+            
+            # Create guess with retries for conjugation failures
+            guess = self._create_guess_with_retries(
+                round_id=round_record.id,
+                user_id=user_id,
+                verb_id=verb.id,
+                question=question,
+                max_retries=3
+            )
+            
+            if guess:
+                guesses.append(guess)
+            else:
+                # If we couldn't create the guess after retries, rollback and fail
+                self.db.rollback()
+                raise RuntimeError(
+                    f"Failed to create guess for {question['verb']} after 3 retries. "
+                    f"Conjugation service may be unavailable."
+                )
+        
+        # Commit all changes
+        self.db.commit()
+        
+        # Return round data with guesses
+        return {
+            "round": {
+                "id": round_record.id,
+                "started_at": round_record.started_at,
+                "filters": round_record.filters,
+                "num_questions": round_record.num_questions,
+                "num_correct_answers": round_record.num_correct_answers,
+                "status": "active"
+            },
+            "guesses": [
+                {
+                    "id": guess.id,
+                    "verb": question['verb'],
+                    "pronoun": guess.pronoun,
+                    "tense": guess.tense, 
+                    "mood": guess.mood,
+                    "correct_answer": guess.correct_answer,
+                    "user_answer": guess.user_answer,
+                    "is_correct": guess.is_correct
+                }
+                for guess, question in zip(guesses, questions)
+            ]
+        }
+    
+    def complete_round(self, round_id: int) -> Dict[str, Any]:
+        """
+        Complete a round by setting ended_at and calculating num_correct_answers.
+        
+        Args:
+            round_id: The ID of the round to complete
+            
+        Returns:
+            Dictionary containing updated round data
+        """
+        # Get the round, ensuring it exists
+        round_record = self.db.query(Round).filter(Round.id == round_id).first()
+        if not round_record:
+            raise ValueError(f"Round with ID {round_id} not found")
+        
+        if round_record.ended_at is not None:
+            raise ValueError(f"Round {round_id} is already completed")
+        
+        # Calculate number of correct answers from guesses
+        num_correct = self.db.query(Guess).filter(
+            Guess.round_id == round_id,
+            Guess.is_correct == True
+        ).count()
+        
+        # Update round
+        round_record.ended_at = func.now()
+        round_record.num_correct_answers = num_correct
+        
+        self.db.commit()
+        
+        return {
+            "round": {
+                "id": round_record.id,
+                "started_at": round_record.started_at,
+                "ended_at": round_record.ended_at,
+                "filters": round_record.filters,
+                "num_questions": round_record.num_questions,
+                "num_correct_answers": round_record.num_correct_answers,
+                "status": "completed"
+            }
+        }
+    
+    def update_guess(self, guess_id: int, user_answer: str, is_correct: bool) -> Dict[str, Any]:
+        """
+        Update a guess with user's answer and correctness
+        
+        Args:
+            guess_id: The ID of the guess to update
+            user_answer: The user's submitted answer
+            is_correct: Whether the answer was correct
+            
+        Returns:
+            Dictionary containing updated guess data
+        """
+        guess = self.db.query(Guess).filter(Guess.id == guess_id).first()
+        if not guess:
+            raise ValueError(f"Guess with id {guess_id} not found")
+        
+        # Update the guess
+        guess.user_answer = user_answer
+        guess.is_correct = is_correct
+        self.db.commit()
+        self.db.refresh(guess)
+        
+        # Return updated guess as dict
+        return {
+            'id': guess.id,
+            'verb': guess.verb.infinitive if guess.verb else "unknown",
+            'pronoun': guess.pronoun,
+            'tense': guess.tense,
+            'mood': guess.mood,
+            'correct_answer': guess.correct_answer,
+            'user_answer': guess.user_answer,
+            'is_correct': guess.is_correct
+        }
+    
+    def transition_to_new_round(
+        self,
+        current_round_id: int,
+        new_filters: Dict[str, Any],
+        num_questions: int = 12,
+        user_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Complete the current round and create a new round with different filters.
+        This is used when filters are changed mid-round.
+        
+        Args:
+            current_round_id: ID of the current active round
+            new_filters: New filter configuration for the new round
+            num_questions: Number of questions for the new round
+            user_id: Optional user ID
+            
+        Returns:
+            Dictionary containing both completed round and new round data
+        """
+        # Complete the current round
+        completed_round = self.complete_round(current_round_id)
+        
+        # Create a new round with the new filters
+        new_round = self.create_round(
+            filters=new_filters,
+            num_questions=num_questions,
+            user_id=user_id
+        )
+        
+        return {
+            "completed_round": completed_round["round"],
+            "new_round": new_round["round"],
+            "guesses": new_round["guesses"],
+            "transition_reason": "filter_change"
+        }
+    
+    def get_active_round(self, user_id: Optional[int] = None) -> Optional[Dict[str, Any]]:
+        """
+        Get the currently active (incomplete) round for a user.
+        
+        Args:
+            user_id: Optional user ID to filter by
+            
+        Returns:
+            Round data if found, None otherwise
+        """
+        query = self.db.query(Round).filter(Round.ended_at.is_(None))
+        
+        if user_id is not None:
+            query = query.filter(Round.user_id == user_id)
+        
+        # Get the most recent active round
+        round_record = query.order_by(Round.started_at.desc()).first()
+        
+        if not round_record:
+            return None
+        
+        # Get associated guesses
+        guesses = self.db.query(Guess).filter(Guess.round_id == round_record.id).all()
+        
+        return {
+            "round": {
+                "id": round_record.id,
+                "started_at": round_record.started_at,
+                "filters": round_record.filters,
+                "num_questions": round_record.num_questions,
+                "num_correct_answers": round_record.num_correct_answers,
+                "status": "active"
+            },
+            "guesses": [
+                {
+                    "id": guess.id,
+                    "verb": guess.verb.infinitive if guess.verb else "unknown",
+                    "pronoun": guess.pronoun,
+                    "tense": guess.tense, 
+                    "mood": guess.mood,
+                    "correct_answer": guess.correct_answer,
+                    "user_answer": guess.user_answer,
+                    "is_correct": guess.is_correct
+                }
+                for guess in guesses
+            ]
+        }
+    
+    def get_round(self, round_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get a specific round with its guesses
+        
+        Args:
+            round_id: The ID of the round to get
+            
+        Returns:
+            Round data if found, None otherwise
+        """
+        round_record = self.db.query(Round).filter(Round.id == round_id).first()
+        
+        if not round_record:
+            return None
+        
+        # Get associated guesses
+        guesses = self.db.query(Guess).filter(Guess.round_id == round_record.id).all()
+        
+        return {
+            "round": {
+                "id": round_record.id,
+                "started_at": round_record.started_at,
+                "ended_at": round_record.ended_at,
+                "filters": round_record.filters,
+                "num_questions": round_record.num_questions,
+                "num_correct_answers": round_record.num_correct_answers,
+                "status": "completed" if round_record.ended_at else "active"
+            },
+            "guesses": [
+                {
+                    "id": guess.id,
+                    "verb": guess.verb.infinitive if guess.verb else "unknown",
+                    "pronoun": guess.pronoun,
+                    "tense": guess.tense, 
+                    "mood": guess.mood,
+                    "correct_answer": guess.correct_answer,
+                    "user_answer": guess.user_answer,
+                    "is_correct": guess.is_correct
+                }
+                for guess in guesses
+            ]
+        }
+    
+    def _get_or_create_verb(self, verb_infinitive: str) -> Verb:
+        """Get existing verb or create new one without definition"""
+        verb = self.db.query(Verb).filter(Verb.infinitive == verb_infinitive).first()
+        if not verb:
+            verb = Verb(infinitive=verb_infinitive, definition=None)
+            self.db.add(verb)
+            self.db.flush()  # Get the verb ID
+        return verb
+    
+    def _create_guess_with_retries(
+        self,
+        round_id: int,
+        user_id: Optional[int],
+        verb_id: int,
+        question: Dict[str, Any],
+        max_retries: int = 3
+    ) -> Optional[Guess]:
+        """
+        Create a guess with retry logic for conjugation failures.
+        
+        This handles cases where the conjugation service might fail temporarily
+        or return invalid results. We retry up to max_retries times before giving up.
+        """
+        for attempt in range(max_retries):
+            try:
+                # Use the pre-calculated correct answer from the question (fixed bug)
+                correct_answer = question.get('answer')
+                
+                # If no pre-calculated answer, regenerate it
+                if not correct_answer:
+                    correct_answer = self.question_service._get_conjugation(
+                        question['verb'],
+                        question['tense'], 
+                        question['mood'],
+                        question['pronoun']
+                    )
+                
+                if correct_answer and len(correct_answer.strip()) > 0:
+                    guess = Guess(
+                        round_id=round_id,
+                        user_id=user_id,
+                        verb_id=verb_id,
+                        pronoun=question['pronoun'],
+                        tense=question['tense'],
+                        mood=question['mood'],
+                        correct_answer=correct_answer,
+                        user_answer=None,
+                        is_correct=None,
+                        created_at=func.now()
+                    )
+                    self.db.add(guess)
+                    self.db.flush()  # Get the guess ID
+                    return guess
+                else:
+                    print(f"Attempt {attempt + 1}: Empty conjugation for {question}")
+                    
+            except Exception as e:
+                print(f"Attempt {attempt + 1}: Error creating guess for {question}: {e}")
+                
+            # If we reach here, the attempt failed - continue to next retry
+            if attempt < max_retries - 1:
+                print(f"Retrying conjugation for {question['verb']}...")
+        
+        # All retries exhausted
+        print(f"Failed to create guess for {question} after {max_retries} attempts")
+        return None
+
+
 # Convenience functions for dependency injection
 def create_question_service(conjugator: Conjugator) -> QuestionService:
     """Factory function to create a QuestionService instance"""
     return QuestionService(conjugator)
+
+def create_round_service(question_service: QuestionService, db: Session) -> RoundService:
+    """Factory function to create a RoundService instance"""
+    return RoundService(question_service, db)
