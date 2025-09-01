@@ -234,9 +234,6 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply, hasA
                 </button>
               ))}
             </div>
-            <p className="text-xs text-slate-500 mt-2">
-              Current: {filters.num_questions || DEFAULT_NUM_QUESTIONS} questions
-            </p>
           </div>
           
           <div className="mt-6 flex justify-end">
@@ -395,7 +392,7 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
             {questionNumber < totalQuestions ? 'Next Card' : 'Finish Round'}
           </button>
           <div className="text-center text-xs text-slate-400">
-            Press 'N' or → to continue
+            Press 'n' or → to continue
           </div>
         </div>
       )}
