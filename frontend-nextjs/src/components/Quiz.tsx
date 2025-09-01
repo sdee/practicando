@@ -864,32 +864,39 @@ export default function FlashcardGame() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-300 via-orange-300 to-indigo-400 py-8 px-4">
-      <div className="max-w-4xl mx-auto space-y-8 relative z-10">
+      <div className="max-w-4xl mx-auto relative z-10">
         {/* Header */}
-        <div className="text-center">
+        <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-indigo-900 mb-2">
             Spanish Conjugations in a Flash!
           </h1>
           <p className="text-lg text-indigo-700 mb-6">Practico. Practicas. Practicamos</p>
-          <div className="flex justify-center space-x-8 text-lg font-medium text-yellow-700 bg-white/60 backdrop-blur-sm rounded-xl py-3 px-6 border border-white/80 shadow-sm">
-            <div>
-              <span>Question {roundState.currentGuessIndex + 1} of {roundState.guesses.length}</span>
-            </div>
-            <div>
-              <span>Score: {roundState.score.correct}/{roundState.score.total} ({roundState.score.total > 0 ? Math.round((roundState.score.correct / roundState.score.total) * 100) : 0}%)</span>
+        </div>
+
+        {/* Filter Panel and Question/Score grouped together */}
+        <div className="space-y-4 mb-8">
+          {/* Filter Panel */}
+          <FilterPanel
+            isOpen={filterPanelOpen}
+            onToggle={() => setFilterPanelOpen(!filterPanelOpen)}
+            filters={filters}
+            onFiltersChange={setFilters}
+            onApply={handleFiltersApply}
+            hasActiveRound={!roundState.isComplete}
+          />
+
+          {/* Question Number and Score */}
+          <div className="text-center">
+            <div className="flex justify-center space-x-8 text-lg font-medium text-yellow-700 bg-white/60 backdrop-blur-sm rounded-xl py-3 px-6 border border-white/80 shadow-sm">
+              <div>
+                <span>Question {roundState.currentGuessIndex + 1} of {roundState.guesses.length}</span>
+              </div>
+              <div>
+                <span>Score: {roundState.score.correct}/{roundState.score.total} ({roundState.score.total > 0 ? Math.round((roundState.score.correct / roundState.score.total) * 100) : 0}%)</span>
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Filter Panel */}
-        <FilterPanel
-          isOpen={filterPanelOpen}
-          onToggle={() => setFilterPanelOpen(!filterPanelOpen)}
-          filters={filters}
-          onFiltersChange={setFilters}
-          onApply={handleFiltersApply}
-          hasActiveRound={!roundState.isComplete}
-        />
 
         {/* Flashcard Container */}
         <div className="flex justify-center items-center" style={{ minHeight: '400px' }}>
