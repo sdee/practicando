@@ -263,11 +263,13 @@ interface FlashcardProps {
 function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, state }: FlashcardProps) {
   const [userAnswer, setUserAnswer] = useState('');
   const [showAnswer, setShowAnswer] = useState(false);
+  const [animationClass, setAnimationClass] = useState('');
 
   // Reset state when question changes
   useEffect(() => {
     setUserAnswer(guess.user_answer || '');
     setShowAnswer(guess.user_answer !== undefined && guess.user_answer !== null);
+    setAnimationClass(''); // Clear any animation when question changes
   }, [guess.id]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -276,11 +278,29 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
 
     const isCorrect = userAnswer.toLowerCase().trim() === guess.correct_answer.toLowerCase();
     setShowAnswer(true);
+    
+    // Trigger animation based on correctness
+    if (isCorrect) {
+      setAnimationClass('animate-triple-bounce');
+    } else {
+      setAnimationClass('animate-enhanced-shake');
+    }
+    
+    // Clear animation after it completes
+    setTimeout(() => {
+      setAnimationClass('');
+    }, 1200); // Longer duration for our custom animations
+    
     onAnswer(isCorrect, userAnswer);
   };
 
   const handleNext = useCallback(() => {
-    onNext();
+    // Add a subtle cross-fade effect before moving to next question
+    setAnimationClass('animate-fade-out-dissolve');
+    
+    setTimeout(() => {
+      onNext();
+    }, 300); // Quicker timing for fade-out animation
   }, [onNext]);
 
   // Keyboard shortcuts
@@ -310,6 +330,7 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
         ${state === 'correct' ? 'border-emerald-300 shadow-emerald-200/30' : 
           state === 'incorrect' ? 'border-rose-300 shadow-rose-200/30' : 
           'border-slate-300 shadow-slate-200/30'}
+        ${animationClass}
       `}
       style={{
         background: state === 'correct' ? 'linear-gradient(135deg, #f9e2e2 0%, #f7c6c6 100%)' :

@@ -13,6 +13,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+        />
+      </head>
       <body className="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
         {children}
       </body>
