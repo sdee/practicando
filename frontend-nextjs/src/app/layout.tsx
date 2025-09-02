@@ -1,16 +1,29 @@
-import type { Metadata } from 'next'
-import './globals.css'
+'use client';
 
-export const metadata: Metadata = {
-  title: 'Spanish Conjugation Flashcards',
-  description: 'Practice Spanish verb conjugations with interactive flashcards',
-}
+import { useState, useEffect } from 'react';
+import './globals.css';
+import Navigation from '@/components/Navigation';
+import { AppState, getAppState } from '@/lib/appState';
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
+  const [appState, setLocalAppState] = useState<AppState>(getAppState());
+
+  // Sync global state changes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const currentGlobalState = getAppState();
+      if (JSON.stringify(appState) !== JSON.stringify(currentGlobalState)) {
+        setLocalAppState({ ...currentGlobalState });
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [appState]);
+
   return (
     <html lang="en">
       <head>
@@ -19,9 +32,15 @@ export default function RootLayout({
           href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
         />
       </head>
-      <body className="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
-        {children}
+      <body>
+        <Navigation 
+          hasActiveRound={appState.hasActiveRound}
+          currentRoundId={appState.currentRoundId}
+        />
+        <main>
+          {children}
+        </main>
       </body>
     </html>
-  )
+  );
 }

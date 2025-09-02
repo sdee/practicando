@@ -71,4 +71,4 @@ export interface RoundState {
   };
 }
 
-export type GamePhase = 'loading' | 'playing' | 'round_complete' | 'filter_warning' | 'error' | 'filter_selection' | 'history';
+export type GamePhase = 'loading' | 'playing' | 'round_complete' | 'filter_warning' | 'error' | 'filter_selection';

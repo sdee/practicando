@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Question, AnswerState, Round, Guess, GamePhase, RoundState, Filters, DEFAULT_NUM_QUESTIONS, QUESTION_COUNT_OPTIONS } from '@/types/flashcard';
 import { createRound, transitionRound, completeRound, getActiveRound, submitGuess } from '@/services/api';
-import History from './History';
+import { setAppState } from '@/lib/appState';
 
 interface PronounOption {
   value: string;
@@ -574,6 +574,15 @@ export default function FlashcardGame() {
     initializeApp();
   }, []);
 
+  // Update app state when round state changes for navigation persistence
+  useEffect(() => {
+    setAppState({
+      currentRoundId: roundState.currentRound?.id || null,
+      currentQuestionIndex: roundState.currentGuessIndex,
+      hasActiveRound: !!(roundState.currentRound && !roundState.isComplete)
+    });
+  }, [roundState]);
+
   const initializeApp = async () => {
     try {
       setGamePhase('loading');
@@ -843,14 +852,6 @@ export default function FlashcardGame() {
     );
   }
 
-  if (gamePhase === 'history') {
-    return (
-      <History onBack={() => {
-        initializeApp();
-      }} />
-    );
-  }
-
   if (gamePhase === 'filter_selection') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 flex items-center justify-center">
@@ -879,7 +880,7 @@ export default function FlashcardGame() {
 
   if (gamePhase === 'round_complete' && roundState.currentRound) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-300 via-orange-300 to-indigo-400 py-8 px-4 flex items-center justify-center transition-all duration-700 ease-in-out">
+      <div className="h-screen bg-gradient-to-br from-pink-300 via-orange-300 to-indigo-400 overflow-hidden flex items-center justify-center transition-all duration-700 ease-in-out">
         <div className="animate-fade-in-up">
           <RoundComplete
             round={roundState.currentRound}
@@ -908,40 +909,33 @@ export default function FlashcardGame() {
   const currentGuess = roundState.guesses[roundState.currentGuessIndex];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-300 via-orange-300 to-indigo-400 py-8 px-4">
-      <div className="max-w-4xl mx-auto relative z-10">
+    <div className="h-screen bg-gradient-to-br from-pink-300 via-orange-300 to-indigo-400 overflow-hidden">
+      <div className="max-w-4xl mx-auto relative z-10 h-full flex flex-col py-8 px-4">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <div></div> {/* Left spacer */}
-            <h1 className="text-4xl font-bold text-indigo-900">
-              Spanish Conjugations in a Flash!
-            </h1>
-            <button
-              onClick={() => setGamePhase('history')}
-              className="px-3 py-2 bg-white/70 hover:bg-white/80 rounded-lg transition-colors text-sm font-medium flex items-center gap-2 text-indigo-800"
-            >
-              📊 History
-            </button>
-          </div>
-          <p className="text-lg text-indigo-700 mb-6">Practico. Practicas. Practicamos</p>
+        <div className="text-center mb-8 flex-shrink-0">
+          <h1 className="text-4xl font-bold text-indigo-900 mb-2">
+            Spanish Conjugations in a Flash!
+          </h1>
+          <p className="text-lg text-indigo-700">Practico. Practicas. Practicamos</p>
         </div>
 
         {/* Filter Panel and Question/Score grouped together */}
-        <div className="space-y-4 mb-8">
+        <div className="flex-1 flex flex-col space-y-4 min-h-0">
           {/* Filter Panel */}
-          <FilterPanel
-            isOpen={filterPanelOpen}
-            onToggle={() => setFilterPanelOpen(!filterPanelOpen)}
-            filters={filters}
-            onFiltersChange={setFilters}
-            onApply={handleFiltersApply}
-            hasActiveRound={!roundState.isComplete}
-          />
+          <div className="flex-shrink-0">
+            <FilterPanel
+              isOpen={filterPanelOpen}
+              onToggle={() => setFilterPanelOpen(!filterPanelOpen)}
+              filters={filters}
+              onFiltersChange={setFilters}
+              onApply={handleFiltersApply}
+              hasActiveRound={!roundState.isComplete}
+            />
+          </div>
 
           {/* Question Number and Score */}
-          <div className="text-center">
-            <div className="flex justify-center space-x-8 text-lg font-medium text-yellow-700 bg-white/60 backdrop-blur-sm rounded-xl py-3 px-6 border border-white/80 shadow-sm">
+          <div className="text-center flex-shrink-0">
+            <div className="inline-flex space-x-6 text-lg font-medium text-yellow-700 bg-white/60 backdrop-blur-sm rounded-xl py-2 px-4 border border-white/80 shadow-sm">
               <div>
                 <span>Question {roundState.currentGuessIndex + 1} of {roundState.guesses.length}</span>
               </div>
@@ -950,19 +944,19 @@ export default function FlashcardGame() {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Flashcard Container */}
-        <div className="flex justify-center items-center" style={{ minHeight: '400px' }}>
-          <Flashcard 
-            key={currentGuess.id}
-            guess={currentGuess}
-            questionNumber={roundState.currentGuessIndex + 1}
-            totalQuestions={roundState.guesses.length}
-            onAnswer={handleAnswer}
-            onNext={handleNext}
-            state={answerState}
-          />
+          {/* Flashcard Container */}
+          <div className="flex-1 flex justify-center items-center">
+            <Flashcard 
+              key={currentGuess.id}
+              guess={currentGuess}
+              questionNumber={roundState.currentGuessIndex + 1}
+              totalQuestions={roundState.guesses.length}
+              onAnswer={handleAnswer}
+              onNext={handleNext}
+              state={answerState}
+            />
+          </div>
         </div>
       </div>
 
