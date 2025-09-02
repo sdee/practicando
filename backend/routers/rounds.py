@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional, List
 from datetime import datetime
@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from db import get_db
 from services import QuestionService, create_round_service
 from dependencies import get_question_service
+from models import Round, Guess, Verb
 
 router = APIRouter(prefix="/rounds", tags=["rounds"])
 
@@ -32,6 +33,20 @@ class SubmitGuessRequest(BaseModel):
 
 class GuessResponse(BaseModel):
     guess: dict
+
+class HistoryResponse(BaseModel):
+    rounds: List[dict]
+
+class RoundHistoryItem(BaseModel):
+    id: int
+    started_at: datetime
+    ended_at: Optional[datetime]
+    num_questions: int
+    num_correct_answers: int
+    pronouns: List[str]
+    tenses: List[str]
+    moods: List[str]
+    questions: Optional[List[dict]] = None
 
 @router.post("", response_model=RoundResponse)
 def create_round(
@@ -156,6 +171,78 @@ def transition_round(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+@router.get("/history", response_model=HistoryResponse)
+def get_rounds_history(
+    user_id: Optional[int] = None,
+    include_questions: bool = Query(False, description="Whether to include questions in each round"),
+    include_incomplete: bool = Query(False, description="Whether to include incomplete rounds"),
+    limit: int = Query(50, ge=1, le=200, description="Maximum number of rounds to return"),
+    db: Session = Depends(get_db),
+    question_service: QuestionService = Depends(get_question_service)
+):
+    """Get history of rounds in reverse chronological order"""
+    try:
+        # Base query for rounds
+        query = db.query(Round)
+        
+        # Filter out incomplete rounds unless explicitly requested
+        if not include_incomplete:
+            query = query.filter(Round.ended_at.isnot(None))
+        
+        # Filter by user if provided
+        if user_id is not None:
+            query = query.filter(Round.user_id == user_id)
+        
+        # Order by most recent first (use started_at if ended_at might be null)
+        order_column = Round.ended_at if not include_incomplete else Round.started_at
+        rounds = query.order_by(order_column.desc()).limit(limit).all()
+        
+        history = []
+        for round in rounds:
+            # Extract filter values with safe defaults
+            filters = round.filters or {}
+            pronouns = filters.get('pronouns', [])
+            tenses = filters.get('tenses', [])
+            moods = filters.get('moods', [])
+            
+            round_data = {
+                "id": round.id,
+                "started_at": round.started_at,
+                "ended_at": round.ended_at,
+                "num_questions": round.num_questions,
+                "num_correct_answers": round.num_correct_answers,
+                "pronouns": pronouns,
+                "tenses": tenses,
+                "moods": moods
+            }
+            
+            # Include questions if requested
+            if include_questions:
+                guesses = db.query(Guess).filter(Guess.round_id == round.id).order_by(Guess.id).all()
+                questions = []
+                for guess in guesses:
+                    verb_obj = db.query(Verb).filter(Verb.id == guess.verb_id).first()
+                    question_data = {
+                        "id": guess.id,
+                        "verb": verb_obj.infinitive if verb_obj else None,
+                        "pronoun": guess.pronoun.value if guess.pronoun else None,
+                        "tense": guess.tense.value if guess.tense else None,
+                        "mood": guess.mood.value if guess.mood else None,
+                        "user_answer": guess.user_answer,
+                        "correct_answer": guess.correct_answer,
+                        "is_correct": guess.is_correct,
+                        "created_at": guess.created_at
+                    }
+                    questions.append(question_data)
+                round_data["questions"] = questions
+            
+            history.append(round_data)
+        
+        return {"rounds": history}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving history: {str(e)}")
 
 @router.put("/guesses/{guess_id}", response_model=GuessResponse)
 def submit_guess(
