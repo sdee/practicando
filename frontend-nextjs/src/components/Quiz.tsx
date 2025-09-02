@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Question, AnswerState, Round, Guess, GamePhase, RoundState, Filters, DEFAULT_NUM_QUESTIONS, QUESTION_COUNT_OPTIONS } from '@/types/flashcard';
 import { createRound, transitionRound, completeRound, getActiveRound, submitGuess } from '@/services/api';
+import History from './History';
 
 interface PronounOption {
   value: string;
@@ -842,6 +843,14 @@ export default function FlashcardGame() {
     );
   }
 
+  if (gamePhase === 'history') {
+    return (
+      <History onBack={() => {
+        initializeApp();
+      }} />
+    );
+  }
+
   if (gamePhase === 'filter_selection') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 flex items-center justify-center">
@@ -903,9 +912,18 @@ export default function FlashcardGame() {
       <div className="max-w-4xl mx-auto relative z-10">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-indigo-900 mb-2">
-            Spanish Conjugations in a Flash!
-          </h1>
+          <div className="flex items-center justify-between mb-2">
+            <div></div> {/* Left spacer */}
+            <h1 className="text-4xl font-bold text-indigo-900">
+              Spanish Conjugations in a Flash!
+            </h1>
+            <button
+              onClick={() => setGamePhase('history')}
+              className="px-3 py-2 bg-white/70 hover:bg-white/80 rounded-lg transition-colors text-sm font-medium flex items-center gap-2 text-indigo-800"
+            >
+              📊 History
+            </button>
+          </div>
           <p className="text-lg text-indigo-700 mb-6">Practico. Practicas. Practicamos</p>
         </div>
 

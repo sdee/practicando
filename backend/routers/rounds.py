@@ -119,59 +119,6 @@ def get_active_round(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
-@router.get("/{round_id}", response_model=RoundResponse)
-def get_round(
-    round_id: int,
-    db: Session = Depends(get_db),
-    question_service: QuestionService = Depends(get_question_service)
-):
-    """Get a specific round with its guesses"""
-    try:
-        # Create round service
-        round_service = create_round_service(question_service, db)
-        
-        # Get the round
-        result = round_service.get_round(round_id)
-        if not result:
-            raise HTTPException(status_code=404, detail="Round not found")
-        
-        return result
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
-
-@router.post("/{round_id}/transition", response_model=TransitionResponse)
-def transition_round(
-    round_id: int,
-    request: CreateRoundRequest,
-    db: Session = Depends(get_db),
-    question_service: QuestionService = Depends(get_question_service)
-):
-    """
-    Complete the current round and create a new round with different filters.
-    This is used when filters are changed mid-round.
-    """
-    try:
-        # Create round service
-        round_service = create_round_service(question_service, db)
-        
-        # Transition to new round
-        result = round_service.transition_to_new_round(
-            current_round_id=round_id,
-            new_filters=request.filters,
-            num_questions=request.num_questions,
-            user_id=request.user_id
-        )
-        
-        return result
-        
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
-
 @router.get("/history", response_model=HistoryResponse)
 def get_rounds_history(
     user_id: Optional[int] = None,
@@ -243,6 +190,59 @@ def get_rounds_history(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving history: {str(e)}")
+
+@router.get("/{round_id}", response_model=RoundResponse)
+def get_round(
+    round_id: int,
+    db: Session = Depends(get_db),
+    question_service: QuestionService = Depends(get_question_service)
+):
+    """Get a specific round with its guesses"""
+    try:
+        # Create round service
+        round_service = create_round_service(question_service, db)
+        
+        # Get the round
+        result = round_service.get_round(round_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="Round not found")
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+@router.post("/{round_id}/transition", response_model=TransitionResponse)
+def transition_round(
+    round_id: int,
+    request: CreateRoundRequest,
+    db: Session = Depends(get_db),
+    question_service: QuestionService = Depends(get_question_service)
+):
+    """
+    Complete the current round and create a new round with different filters.
+    This is used when filters are changed mid-round.
+    """
+    try:
+        # Create round service
+        round_service = create_round_service(question_service, db)
+        
+        # Transition to new round
+        result = round_service.transition_to_new_round(
+            current_round_id=round_id,
+            new_filters=request.filters,
+            num_questions=request.num_questions,
+            user_id=request.user_id
+        )
+        
+        return result
+        
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 @router.put("/guesses/{guess_id}", response_model=GuessResponse)
 def submit_guess(
