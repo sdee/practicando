@@ -1,7 +1,6 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
 
 interface NavigationProps {
   hasActiveRound: boolean;
@@ -11,8 +10,6 @@ interface NavigationProps {
 export default function Navigation({ hasActiveRound, currentRoundId }: NavigationProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [showWarning, setShowWarning] = useState(false);
-  const [pendingRoute, setPendingRoute] = useState<string | null>(null);
 
   const tabs = [
     { id: 'practice', label: '🎯 Practice', path: '/practice' },
@@ -21,27 +18,8 @@ export default function Navigation({ hasActiveRound, currentRoundId }: Navigatio
   ];
 
   const handleTabClick = (path: string) => {
-    // If there's an active round and user is navigating away from practice
-    if (hasActiveRound && pathname === '/practice' && path !== '/practice') {
-      setPendingRoute(path);
-      setShowWarning(true);
-      return;
-    }
-    
+    // Navigate directly - progress is auto-saved
     router.push(path);
-  };
-
-  const handleWarningConfirm = () => {
-    if (pendingRoute) {
-      router.push(pendingRoute);
-      setPendingRoute(null);
-    }
-    setShowWarning(false);
-  };
-
-  const handleWarningCancel = () => {
-    setPendingRoute(null);
-    setShowWarning(false);
   };
 
   return (
@@ -90,35 +68,6 @@ export default function Navigation({ hasActiveRound, currentRoundId }: Navigatio
           </div>
         </div>
       </nav>
-
-      {/* Navigation Warning Modal */}
-      {showWarning && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md mx-auto shadow-xl border">
-            <div className="text-center">
-              <div className="text-3xl mb-4">⚠️</div>
-              <h3 className="text-xl font-bold text-slate-800 mb-3">Leave Practice Round?</h3>
-              <p className="text-slate-600 mb-6">
-                You have an active round in progress. Your progress will be saved and you can return to it later from the Practice tab.
-              </p>
-              <div className="flex space-x-3">
-                <button
-                  onClick={handleWarningCancel}
-                  className="flex-1 bg-slate-200 text-slate-700 py-3 px-4 rounded-lg hover:bg-slate-300 font-medium transition-colors"
-                >
-                  Stay
-                </button>
-                <button
-                  onClick={handleWarningConfirm}
-                  className="flex-1 bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 font-medium transition-colors"
-                >
-                  Leave (Save Progress)
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
