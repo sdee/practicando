@@ -131,7 +131,7 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply, hasA
     <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-white/80 shadow-lg mb-6">
       <button
         onClick={onToggle}
-        className="w-full p-4 text-left flex items-center justify-between hover:bg-white/50 transition-colors rounded-xl"
+        className="w-full py-2 px-4 text-left flex items-center justify-between hover:bg-white/50 transition-colors rounded-xl"
       >
         <div className="flex items-center space-x-2">
           <span className="text-lg font-semibold text-slate-700">Filters</span>
@@ -145,7 +145,7 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply, hasA
       </button>
       
       <div style={{ maxHeight: isOpen ? '1000px' : '0px', opacity: isOpen ? 1 : 0, overflow: 'hidden' }}>
-        <div className="p-4 border-t border-slate-200">
+        <div className="py-3 px-4 border-t border-slate-200">
           {hasActiveRound && (
             <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-sm text-yellow-800">
@@ -920,7 +920,7 @@ export default function FlashcardGame() {
         </div>
 
         {/* Filter Panel and Question/Score grouped together */}
-        <div className="flex-1 flex flex-col space-y-4 min-h-0">
+        <div className="flex-1 flex flex-col space-y-2 min-h-0">
           {/* Filter Panel */}
           <div className="flex-shrink-0">
             <FilterPanel
