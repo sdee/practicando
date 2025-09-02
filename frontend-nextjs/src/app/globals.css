@@ -37,6 +37,18 @@
   }
 }
 
+/* Emoji bounce - 3 bounces then stop */
+@keyframes emoji-bounce {
+  0%, 100% { transform: translateY(0); }
+  10% { transform: translateY(-8px); }
+  20% { transform: translateY(0); }
+  30% { transform: translateY(-6px); }
+  40% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+  60% { transform: translateY(0); }
+  70%, 80%, 90% { transform: translateY(0); }
+}
+
 /* Enhanced shake animation - more pronounced head shake */
 @keyframes enhanced-headShake {
   0% {
@@ -123,6 +135,57 @@
 
 .animate-enhanced-shake {
   animation: enhanced-headShake 0.8s ease-in-out;
+}
+
+.animate-emoji-bounce {
+  animation: emoji-bounce 1.2s ease-out;
+}
+
+/* Custom tooltip styles */
+.tooltip {
+  position: relative;
+}
+
+.tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30, 41, 59, 0.95);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(8px);
+}
+
+.tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(6px);
+  border: 6px solid transparent;
+  border-top-color: rgba(30, 41, 59, 0.95);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+  z-index: 1000;
+}
+
+.tooltip:hover::after,
+.tooltip:hover::before {
+  opacity: 1;
+  visibility: visible;
 }
 
 /* Card transition animation classes */

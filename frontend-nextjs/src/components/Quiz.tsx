@@ -467,11 +467,30 @@ function RoundComplete({ round, score, onStartNewRound, onChangeSettings }: Roun
     return `${pronounStr} • ${tenseStr} • ${moodStr} • ${questionCount} questions`;
   };
 
+  // Keyboard shortcuts for round complete screen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case ' ': // Spacebar - start new round with same settings
+          e.preventDefault();
+          onStartNewRound(getLastUsedFilters());
+          break;
+        case 'c': // C - change settings
+          e.preventDefault();
+          onChangeSettings();
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onStartNewRound, onChangeSettings, getLastUsedFilters]);
+
   return (
     <div className="w-[500px] bg-gradient-to-br from-white/30 via-purple-50/40 to-pink-50/30 backdrop-blur-md rounded-2xl shadow-2xl border border-white/30 overflow-hidden transition-all duration-500 ease-out transform hover:scale-[1.02]">
       {/* Header with emoji and title */}
       <div className="text-center pt-8 pb-4 px-8">
-        <div className="text-5xl mb-4 animate-bounce">
+        <div className="text-5xl mb-4 animate-emoji-bounce">
           {getPerformanceEmoji(percentage)}
         </div>
         <h2 className="text-3xl font-bold text-slate-800 mb-3">
@@ -494,8 +513,8 @@ function RoundComplete({ round, score, onStartNewRound, onChangeSettings }: Roun
 
       {/* Settings used section - improved layout */}
       <div className="px-8 pb-6">
-        <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-          <div className="text-sm font-medium text-slate-700 mb-2">Settings used:</div>
+        <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/20 text-center">
+          <div className="text-sm font-bold text-slate-700 mb-2">Settings:</div>
           <div className="text-base text-slate-800">
             {formatFilters(getLastUsedFilters())}
           </div>
@@ -509,10 +528,8 @@ function RoundComplete({ round, score, onStartNewRound, onChangeSettings }: Roun
           onClick={() => onStartNewRound(getLastUsedFilters())}
           className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
         >
-          <div className="text-lg">Same Settings Again</div>
-          <div className="text-sm text-purple-200 mt-1">
-            {formatFilters(getLastUsedFilters())}
-          </div>
+          <div className="text-lg">Play again</div>
+          <div className="text-sm text-purple-200 mt-1">Same settings • Press Space</div>
         </button>
 
         {/* Change settings */}
@@ -520,7 +537,8 @@ function RoundComplete({ round, score, onStartNewRound, onChangeSettings }: Roun
           onClick={onChangeSettings}
           className="w-full bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
         >
-          <div className="text-lg">Change Settings</div>
+          <div className="text-lg">Change it up</div>
+          <div className="text-sm text-gray-200 mt-1">Tweak filters • Press 'c'</div>
         </button>
       </div>
     </div>
