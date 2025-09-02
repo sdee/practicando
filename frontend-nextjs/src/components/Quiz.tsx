@@ -909,7 +909,7 @@ export default function FlashcardGame() {
   const currentGuess = roundState.guesses[roundState.currentGuessIndex];
 
   return (
-    <div className="h-screen bg-gradient-to-br from-pink-300 via-orange-300 to-indigo-400 overflow-hidden">
+    <div className="h-full bg-gradient-to-br from-pink-300 via-orange-300 to-indigo-400 overflow-hidden">
       <div className="max-w-4xl mx-auto relative z-10 h-full flex flex-col py-8 px-4">
         {/* Header */}
         <div className="text-center mb-8 flex-shrink-0">
