@@ -35,7 +35,7 @@ export default function Navigation({ hasActiveRound, currentRoundId }: Navigatio
               </h1>
             </div>
 
-            {/* Tab Navigation */}
+            {/* Tab Navigation - Centered */}
             <div className="flex space-x-1">
               {tabs.map((tab) => {
                 const isActive = pathname === tab.path || (pathname === '/' && tab.path === '/practice');
@@ -55,16 +55,10 @@ export default function Navigation({ hasActiveRound, currentRoundId }: Navigatio
               })}
             </div>
 
-            {/* Active Round Indicator */}
-            {hasActiveRound && pathname !== '/practice' && (
-              <button
-                onClick={() => router.push('/practice')}
-                className="flex items-center text-xs text-orange-600 bg-orange-50/80 px-2.5 py-1 rounded-full border border-orange-200/50 hover:bg-orange-100/80 transition-colors cursor-pointer"
-              >
-                <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5 animate-pulse"></span>
-                Active round
-              </button>
-            )}
+            {/* Empty space for symmetry */}
+            <div className="flex items-center">
+              <div className="w-16"></div>
+            </div>
           </div>
         </div>
       </nav>
