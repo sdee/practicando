@@ -13,8 +13,8 @@ export default function Navigation({ hasActiveRound, currentRoundId }: Navigatio
 
   const tabs = [
     { id: 'practice', label: '🎯 Practice', path: '/practice' },
-    { id: 'history', label: '📊 History', path: '/history' },
-    { id: 'metrics', label: '📈 Metrics', path: '/metrics' },
+    { id: 'history', label: '✏️ History', path: '/history' },
+    { id: 'metrics', label: '� Metrics', path: '/metrics' },
   ];
 
   const handleTabClick = (path: string) => {
