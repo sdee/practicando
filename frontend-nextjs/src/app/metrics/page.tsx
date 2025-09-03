@@ -1,6 +1,6 @@
 'use client';
 
-import CoverageHeatmap from '@/components/CoverageHeatmap';
+import MetricsGrid from '@/components/MetricsGrid';
 
 export default function MetricsPage() {
   return (
@@ -16,29 +16,30 @@ export default function MetricsPage() {
           </p>
         </div>
         
-        {/* Coverage Heatmap */}
-        <div className="mb-8">
-          <CoverageHeatmap mood="indicative" />
-        </div>
+        {/* Flexible metrics grid - easy to add new metrics here */}
+        <MetricsGrid />
         
-        {/* Placeholder for future metrics */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        {/* Coming Soon Previews */}
+        <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto mt-12">
           <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 border border-white/80">
             <div className="text-3xl mb-2">📊</div>
             <h3 className="font-semibold text-slate-800">Accuracy Trends</h3>
             <p className="text-slate-600 text-sm mt-2">Track your improvement over time</p>
+            <div className="text-xs text-slate-500 mt-3">Coming Soon</div>
           </div>
           
           <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 border border-white/80">
             <div className="text-3xl mb-2">🎯</div>
             <h3 className="font-semibold text-slate-800">Weak Spots</h3>
             <p className="text-slate-600 text-sm mt-2">Focus areas for practice</p>
+            <div className="text-xs text-slate-500 mt-3">Coming Soon</div>
           </div>
           
           <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 border border-white/80">
             <div className="text-3xl mb-2">🏆</div>
             <h3 className="font-semibold text-slate-800">Achievements</h3>
             <p className="text-slate-600 text-sm mt-2">Milestones and streaks</p>
+            <div className="text-xs text-slate-500 mt-3">Coming Soon</div>
           </div>
         </div>
       </div>
