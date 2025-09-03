@@ -1,4 +1,9 @@
-"""Utility functions for validation"""
+"""Utility functions for validation and TubeLex data parsing"""
+
+import csv
+from pathlib import Path
+from typing import List, Dict, Any
+from sqlalchemy.orm import Session
 
 def validate_enum_value(enum_class, value):
     """
@@ -89,3 +94,105 @@ def extract_conjugation_from_response(response, pronoun, mood):
             return result
     
     return result
+
+
+def parse_tubelex_verbs_file(file_path: str) -> List[Dict[str, Any]]:
+    """
+    Parses the TubeLex verbs TSV file and returns infinitive, rank, and count. 
+    Data sourced from the TubeLex corpus of YouTube subtitles (https://github.com/naist-nlp/tubelex).
+    
+    Args:
+        file_path: Path to the TSV file containing verb frequency data
+        
+    Returns:
+        List of dictionaries containing infinitive, tubelex_count, and tubelex_rank
+    """
+    verbs_data = []
+    
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            # Skip the header line
+            next(file)
+            
+            rank = 1  # Start ranking from 1
+            
+            for line in file:
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                # Split by tab
+                parts = line.split('\t')
+                if len(parts) >= 2:
+                    lemm = parts[0].strip()
+                    try:
+                        count = int(parts[1].strip())
+                    except ValueError:
+                        # Skip lines where count is not a valid integer
+                        continue
+                    
+                    verb_data = {
+                        'infinitive': lemm,
+                        'tubelex_count': count,
+                        'tubelex_rank': rank
+                    }
+                    verbs_data.append(verb_data)
+                    rank += 1
+                    
+    except FileNotFoundError:
+        raise FileNotFoundError(f"TubeLex verbs file not found at: {file_path}")
+    except Exception as e:
+        raise Exception(f"Error parsing TubeLex verbs file: {str(e)}")
+    
+    return verbs_data
+
+
+def populate_verbs_from_tubelex(session, file_path: str) -> Dict[str, int]:
+    """
+    Populate the verbs table with TubeLex data.
+    
+    Args:
+        session: SQLAlchemy session
+        file_path: Path to the TSV file
+        
+    Returns:
+        Dictionary with statistics: {'added': count, 'updated': count, 'skipped': count}
+    """
+    from models import Verb  # Import here to avoid circular imports
+    
+    verbs_data = parse_tubelex_verbs_file(file_path)
+    
+    stats = {'added': 0, 'updated': 0, 'skipped': 0}
+    
+    for verb_data in verbs_data:
+        infinitive = verb_data['infinitive']
+        tubelex_count = verb_data['tubelex_count']
+        tubelex_rank = verb_data['tubelex_rank']
+        
+        # Check if verb already exists
+        existing_verb = session.query(Verb).filter(Verb.infinitive == infinitive).first()
+        
+        if existing_verb:
+            # Update existing verb with TubeLex data
+            existing_verb.tubelex_count = tubelex_count
+            existing_verb.tubelex_rank = tubelex_rank
+            stats['updated'] += 1
+        else:
+            # Create new verb with TubeLex data
+            new_verb = Verb(
+                infinitive=infinitive,
+                tubelex_count=tubelex_count,
+                tubelex_rank=tubelex_rank
+            )
+            session.add(new_verb)
+            stats['added'] += 1
+    
+    try:
+        session.commit()
+        print(f"Successfully processed {len(verbs_data)} verbs from TubeLex data")
+        print(f"Added: {stats['added']}, Updated: {stats['updated']}, Skipped: {stats['skipped']}")
+    except Exception as e:
+        session.rollback()
+        raise Exception(f"Error saving TubeLex data to database: {str(e)}")
+    
+    return stats
