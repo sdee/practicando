@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, text
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 from pydantic import BaseModel
+import calendar
 
 from db import get_db
-from models import Guess, MoodEnum, TenseEnum, PronounEnum, Verb
+from models import Guess, Round, MoodEnum, TenseEnum, PronounEnum, Verb
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
@@ -28,6 +29,20 @@ class CoverageBin(BaseModel):
 class CoverageResponse(BaseModel):
     metadata: CoverageMetadata
     bins: List[CoverageBin]
+
+
+class ActivityDataPoint(BaseModel):
+    date: str
+    value: int
+    label: str
+
+
+class ActivityResponse(BaseModel):
+    metric: str
+    period: str
+    data: List[ActivityDataPoint]
+    total: int
+    average: float
 
 
 @router.get("/coverage", response_model=CoverageResponse)
@@ -121,4 +136,178 @@ async def get_coverage_metrics(
     return CoverageResponse(
         metadata=metadata,
         bins=bins
+    )
+
+
+@router.get("/activity", response_model=ActivityResponse)
+async def get_practice_activity(
+    db: Session = Depends(get_db),
+    metric: str = Query("questions", description="Metric to track: 'questions' or 'rounds'"),
+    period: str = Query("week", description="Time period: 'week' (days), 'month' (weeks), or 'year' (months)"),
+    user_id: Optional[int] = Query(None, description="Filter by user (optional)")
+):
+    """
+    Get practice activity over time, with complete time series including zero values.
+    
+    - metric='questions': Count answered questions by time period
+    - metric='rounds': Count completed rounds by time period  
+    - period='week': Last 7 days, binned by day
+    - period='month': Last 4 weeks, binned by week
+    - period='year': Last 12 months, binned by month
+    """
+    
+    # Validate parameters
+    if metric not in ["questions", "rounds"]:
+        raise HTTPException(status_code=400, detail="metric must be 'questions' or 'rounds'")
+    
+    if period not in ["week", "month", "year"]:
+        raise HTTPException(status_code=400, detail="period must be 'week', 'month', or 'year'")
+    
+    # Calculate date range and binning
+    now = datetime.utcnow()
+    
+    if period == "week":
+        # Last 7 days, binned by day
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=6)
+        date_format = "%Y-%m-%d"
+        trunc_format = "day"
+        periods = []
+        for i in range(7):
+            day = start_date + timedelta(days=i)
+            periods.append({
+                'date': day.strftime(date_format),
+                'label': day.strftime("%a"),  # Mon, Tue, etc
+                'start': day,
+                'end': day + timedelta(days=1)
+            })
+    
+    elif period == "month":
+        # Last 4 weeks, binned by week (Monday start)
+        # Find the Monday of this week
+        days_since_monday = now.weekday()
+        this_monday = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days_since_monday)
+        start_date = this_monday - timedelta(weeks=3)
+        
+        periods = []
+        for i in range(4):
+            week_start = start_date + timedelta(weeks=i)
+            week_end = week_start + timedelta(days=7)
+            periods.append({
+                'date': week_start.strftime("%Y-%m-%d"),
+                'label': f"Week {i + 1}",
+                'start': week_start,
+                'end': week_end
+            })
+    
+    else:  # year
+        # Last 12 months, binned by month
+        current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        periods = []
+        for i in range(12):
+            # Go back i months from current month
+            if current_month_start.month > i:
+                month_start = current_month_start.replace(month=current_month_start.month - i)
+            else:
+                year_offset = (i - current_month_start.month) // 12 + 1
+                month_num = 12 - ((i - current_month_start.month) % 12)
+                month_start = current_month_start.replace(year=current_month_start.year - year_offset, month=month_num)
+            
+            # Calculate month end
+            if month_start.month == 12:
+                month_end = month_start.replace(year=month_start.year + 1, month=1)
+            else:
+                month_end = month_start.replace(month=month_start.month + 1)
+            
+            periods.insert(0, {  # Insert at beginning to maintain chronological order
+                'date': month_start.strftime("%Y-%m-%d"),
+                'label': month_start.strftime("%b"),  # Jan, Feb, etc
+                'start': month_start,
+                'end': month_end
+            })
+    
+    # Query data based on metric type
+    if metric == "questions":
+        # Count answered questions (any guess record)
+        query = db.query(
+            func.date_trunc(trunc_format if period == "week" else "day", Guess.created_at).label('period_date'),
+            func.count(Guess.id).label('count')
+        )
+        
+        if user_id:
+            query = query.filter(Guess.user_id == user_id)
+        
+        # Filter by overall date range
+        overall_start = periods[0]['start']
+        overall_end = periods[-1]['end']
+        query = query.filter(
+            Guess.created_at >= overall_start,
+            Guess.created_at < overall_end
+        )
+        
+        query = query.group_by(func.date_trunc(trunc_format if period == "week" else "day", Guess.created_at))
+        
+    else:  # rounds
+        # Count completed rounds (rounds with ended_at set)
+        query = db.query(
+            func.date_trunc(trunc_format if period == "week" else "day", Round.ended_at).label('period_date'),
+            func.count(Round.id).label('count')
+        )
+        
+        if user_id:
+            query = query.filter(Round.user_id == user_id)
+        
+        # Filter by overall date range and only completed rounds
+        overall_start = periods[0]['start']
+        overall_end = periods[-1]['end']
+        query = query.filter(
+            Round.ended_at.isnot(None),
+            Round.ended_at >= overall_start,
+            Round.ended_at < overall_end
+        )
+        
+        query = query.group_by(func.date_trunc(trunc_format if period == "week" else "day", Round.ended_at))
+    
+    # Execute query
+    results = query.all()
+    
+    # Convert results to lookup dictionary
+    data_by_date = {}
+    if period == "week":
+        # For daily data, key by date string
+        for row in results:
+            date_key = row.period_date.strftime("%Y-%m-%d")
+            data_by_date[date_key] = row.count
+    else:
+        # For weekly/monthly data, we need to match periods to data points
+        for row in results:
+            row_date = row.period_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            # Find which period this data point belongs to
+            for p in periods:
+                if p['start'] <= row_date < p['end']:
+                    data_by_date[p['date']] = data_by_date.get(p['date'], 0) + row.count
+                    break
+    
+    # Build complete time series with zeros
+    data_points = []
+    total_value = 0
+    
+    for p in periods:
+        value = data_by_date.get(p['date'], 0)
+        data_points.append(ActivityDataPoint(
+            date=p['date'],
+            value=value,
+            label=p['label']
+        ))
+        total_value += value
+    
+    # Calculate average
+    average = total_value / len(periods) if periods else 0
+    
+    return ActivityResponse(
+        metric=metric,
+        period=period,
+        data=data_points,
+        total=total_value,
+        average=round(average, 1)
     )
