@@ -225,10 +225,6 @@ export default function CoverageHeatmap({ mood = 'indicative' }: CoverageHeatmap
           </div>
           <span>More</span>
         </div>
-        
-        <div className="text-sm text-slate-500">
-          Max: {getMaxQuestions()} questions
-        </div>
       </div>
     </div>
   );
