@@ -39,6 +39,8 @@ class Verb(Base):
     id = Column(Integer, primary_key=True)
     infinitive = Column(String(50), unique=True, nullable=False)
     definition = Column(Text)
+    tubelex_count = Column(Integer, nullable=True)
+    tubelex_rank = Column(Integer, nullable=True)
 
     guesses = relationship("Guess", back_populates="verb")
 
