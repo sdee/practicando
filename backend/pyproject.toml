@@ -23,6 +23,7 @@ dependencies = [
     "gunicorn>=23.0.0",
     "ruff>=0.12.9",
     "spanishconjugator>=2.3.9474",
+    "faker>=37.6.0",
 ]
 
 [tool.uv]
