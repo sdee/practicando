@@ -79,14 +79,14 @@ export default function ActivityChart() {
         <p className="text-slate-600 mb-4">{getSubtitle()}</p>
         
         {/* Control toggles */}
-        <div className="flex justify-center space-x-6">
+        <div className="flex justify-center space-x-8">
           {/* Metric toggle */}
-          <div className="flex items-center space-x-3">
-            <span className="text-sm font-medium text-slate-700">Track:</span>
+          <div className="flex items-center space-x-4">
+            <span className="text-sm font-semibold text-blue-700">Metric:</span>
             <div className="flex bg-slate-100 rounded-lg p-1">
               <button
                 onClick={() => setMetric('questions')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                   metric === 'questions'
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'text-slate-600 hover:text-slate-800'
@@ -96,7 +96,7 @@ export default function ActivityChart() {
               </button>
               <button
                 onClick={() => setMetric('rounds')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                   metric === 'rounds'
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'text-slate-600 hover:text-slate-800'
@@ -108,12 +108,12 @@ export default function ActivityChart() {
           </div>
 
           {/* Period toggle */}
-          <div className="flex items-center space-x-3">
-            <span className="text-sm font-medium text-slate-700">View:</span>
+          <div className="flex items-center space-x-4">
+            <span className="text-sm font-semibold text-purple-700">Timespan:</span>
             <div className="flex bg-slate-100 rounded-lg p-1">
               <button
                 onClick={() => setPeriod('week')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                   period === 'week'
                     ? 'bg-purple-600 text-white shadow-sm'
                     : 'text-slate-600 hover:text-slate-800'
@@ -123,7 +123,7 @@ export default function ActivityChart() {
               </button>
               <button
                 onClick={() => setPeriod('month')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                   period === 'month'
                     ? 'bg-purple-600 text-white shadow-sm'
                     : 'text-slate-600 hover:text-slate-800'
