@@ -15,6 +15,7 @@ class CreateRoundRequest(BaseModel):
     filters: dict = Field(description="Filter object with pronouns, tenses, and moods lists")
     num_questions: int = Field(default=12, ge=1, le=50, description="Number of questions in the round")
     user_id: Optional[int] = Field(default=None, description="User ID for multi-user support")
+    verb_class: str = Field(default="top20", description="Verb class to use (e.g., 'top10', 'top20', 'top50')")
 
 class RoundResponse(BaseModel):
     round: dict
@@ -63,7 +64,8 @@ def create_round(
         result = round_service.create_round(
             filters=request.filters,
             num_questions=request.num_questions,
-            user_id=request.user_id
+            user_id=request.user_id,
+            verb_class=request.verb_class
         )
         
         return result
@@ -234,7 +236,8 @@ def transition_round(
             current_round_id=round_id,
             new_filters=request.filters,
             num_questions=request.num_questions,
-            user_id=request.user_id
+            user_id=request.user_id,
+            verb_class=request.verb_class
         )
         
         return result

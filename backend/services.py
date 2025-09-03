@@ -8,6 +8,7 @@ from spanishconjugator import Conjugator
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 import random
+import re
 
 from utils import normalize_pronoun, extract_conjugation_from_response
 from models import Round, Guess, Verb
@@ -16,11 +17,50 @@ from models import Round, Guess, Verb
 class QuestionService:
     """Service for generating questions"""
     
-    def __init__(self, conjugator: Conjugator):
+    def __init__(self, conjugator: Conjugator, db: Session):
         self.conjugator = conjugator
-        self.default_verbs = ['hablar', 'caminar', 'estudiar', 'trabajar']  # Use regular verbs for now
-        # Irregular verbs that have issues with subjunctive mood in the conjugator library
-        self.problematic_verbs = ['ir', 'ser', 'estar', 'tener', 'hacer', 'venir']
+        self.db = db
+    
+    def get_verbs_by_class(self, verb_class: str) -> List[str]:
+        """
+        Get list of verb infinitives based on verb class string.
+        
+        Args:
+            verb_class: String like "top10", "top20", etc. Eventually "tricky", etc.
+            
+        Returns:
+            List of verb infinitives
+            
+        Raises:
+            ValueError: If verb_class format is not supported
+        """
+        # Check for "top" followed by number pattern
+        top_match = re.match(r'^top(\d+)$', verb_class.lower())
+        
+        if top_match:
+            limit = int(top_match.group(1))
+            
+            # Get top N verbs by TubeLex rank
+            verbs = (self.db.query(Verb)
+                    .filter(Verb.tubelex_rank.isnot(None))
+                    .order_by(Verb.tubelex_rank.asc())
+                    .limit(limit)
+                    .all())
+            
+            if not verbs:
+                raise ValueError(f"No verbs found with TubeLex ranking data")
+            
+            return [verb.infinitive for verb in verbs]
+        
+        # Add other verb classes here in the future
+        # elif verb_class == "tricky":
+        #     return self._get_tricky_verbs()
+        
+        else:
+            raise ValueError(
+                f"Unsupported verb class: '{verb_class}'. "
+                f"Supported formats: 'top<number>' (e.g., 'top10', 'top50')"
+            )
     
     def generate_questions(
         self,
@@ -28,7 +68,7 @@ class QuestionService:
         tenses: List[str], 
         moods: List[str],
         limit: int,
-        verbs: List[str] = None
+        verb_class: str = "top20"
     ) -> List[Dict[str, Any]]:
         """
         Generate random conjugation questions based on the provided filters.
@@ -38,13 +78,19 @@ class QuestionService:
             tenses: List of tenses to choose from  
             moods: List of moods to choose from
             limit: Number of questions to generate
-            verbs: Optional list of verbs, defaults to standard verbs
+            verb_class: Verb class string (e.g., "top10", "top50")
             
         Returns:
             List of question dictionaries with pronoun, tense, mood, verb, and answer
+            
+        Raises:
+            ValueError: If verb_class is invalid or no verbs found
         """
-        if verbs is None:
-            verbs = self.default_verbs
+        # Get verbs based on class
+        verbs = self.get_verbs_by_class(verb_class)
+        
+        if not verbs:
+            raise ValueError(f"No verbs available for class '{verb_class}'")
             
         questions = []
         max_attempts = limit * 3  # Try up to 3x the limit to account for failures
@@ -125,7 +171,8 @@ class RoundService:
         self,
         filters: Dict[str, List[str]],
         num_questions: int = 12,
-        user_id: Optional[int] = None
+        user_id: Optional[int] = None,
+        verb_class: str = "top20"
     ) -> Dict[str, Any]:
         """
         Create a new round with pre-generated guesses.
@@ -134,6 +181,7 @@ class RoundService:
             filters: Dictionary containing pronouns, tenses, and moods lists
             num_questions: Number of questions to generate (default 12)
             user_id: Optional user ID for multi-user support
+            verb_class: Verb class string (e.g., "top10", "top50")
             
         Returns:
             Dictionary containing round data and all guesses
@@ -155,7 +203,8 @@ class RoundService:
             pronouns=filters['pronouns'],
             tenses=filters['tenses'],
             moods=filters['moods'],
-            limit=num_questions
+            limit=num_questions,
+            verb_class=verb_class
         )
         
         # Check if we got enough questions
@@ -164,7 +213,7 @@ class RoundService:
             raise ValueError(
                 f"Could not generate enough questions. "
                 f"Requested {num_questions}, got {len(questions)}. "
-                f"Try different filters or reduce the number of questions."
+                f"Try different filters, verb class, or reduce the number of questions."
             )
         
         guesses = []
@@ -300,7 +349,8 @@ class RoundService:
         current_round_id: int,
         new_filters: Dict[str, Any],
         num_questions: int = 12,
-        user_id: Optional[int] = None
+        user_id: Optional[int] = None,
+        verb_class: str = "top20"
     ) -> Dict[str, Any]:
         """
         Complete the current round and create a new round with different filters.
@@ -311,6 +361,7 @@ class RoundService:
             new_filters: New filter configuration for the new round
             num_questions: Number of questions for the new round
             user_id: Optional user ID
+            verb_class: Verb class string (e.g., "top10", "top50")
             
         Returns:
             Dictionary containing both completed round and new round data
@@ -322,7 +373,8 @@ class RoundService:
         new_round = self.create_round(
             filters=new_filters,
             num_questions=num_questions,
-            user_id=user_id
+            user_id=user_id,
+            verb_class=verb_class
         )
         
         return {
@@ -492,9 +544,9 @@ class RoundService:
 
 
 # Convenience functions for dependency injection
-def create_question_service(conjugator: Conjugator) -> QuestionService:
+def create_question_service(conjugator: Conjugator, db: Session) -> QuestionService:
     """Factory function to create a QuestionService instance"""
-    return QuestionService(conjugator)
+    return QuestionService(conjugator, db)
 
 def create_round_service(question_service: QuestionService, db: Session) -> RoundService:
     """Factory function to create a RoundService instance"""

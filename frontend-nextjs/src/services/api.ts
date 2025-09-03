@@ -19,6 +19,9 @@ export async function fetchQuestions(count: number = 15, filters?: Filters): Pro
   // Add limit
   params.append('limit', count.toString());
   
+  // Add verb_class parameter (minimum change for TubeLex integration)
+  params.append('verb_class', 'top20');
+  
   // Use provided filters or defaults
   const pronouns = filters?.pronouns || ['yo', 'tu', 'el', 'ella', 'usted', 'nosotros', 'vosotros', 'ellos', 'ustedes'];
   const tenses = filters?.tenses || ['present', 'imperfect', 'preterite', 'future', 'present_perfect', 'past_anterior', 'future_perfect', 'conditional_simple'];
@@ -50,6 +53,7 @@ export async function createRound(filters: Filters): Promise<RoundResponse> {
       moods: filters.moods,
     },
     num_questions: filters.num_questions || DEFAULT_NUM_QUESTIONS,
+    verb_class: 'top20',  // Minimum change - use default verb class
   };
 
   console.log('📡 Request body being sent:', requestBody);
@@ -97,6 +101,7 @@ export async function transitionRound(currentRoundId: number, filters: Filters):
         moods: filters.moods,
       },
       num_questions: filters.num_questions || DEFAULT_NUM_QUESTIONS,
+      verb_class: 'top20',  // Minimum change - use default verb class
     }),
   });
 

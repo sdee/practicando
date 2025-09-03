@@ -23,6 +23,7 @@ def get_questions(
     tense: List[str] = Query(default=["present"], description="Filter by tenses", alias="tense"), 
     mood: List[str] = Query(default=["indicative"], description="Filter by moods", alias="mood"),
     limit: int = Query(default=1, ge=1, le=100, description="Number of questions to return"),
+    verb_class: str = Query(default="top20", description="Verb class to use (e.g., 'top10', 'top20', 'top50')"),
     db: Session = Depends(get_db),
     question_service: QuestionService = Depends(get_question_service)
 ):
@@ -52,12 +53,21 @@ def get_questions(
         )
     
     # Use the service to generate questions
-    questions = question_service.generate_questions(
-        pronouns=filters.pronoun,
-        tenses=filters.tense,
-        moods=filters.mood,
-        limit=filters.limit
-    )
+    try:
+        questions = question_service.generate_questions(
+            pronouns=filters.pronoun,
+            tenses=filters.tense,
+            moods=filters.mood,
+            limit=filters.limit,
+            verb_class=verb_class
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": str(e)
+            }
+        )
     
     return {
         "questions": questions
