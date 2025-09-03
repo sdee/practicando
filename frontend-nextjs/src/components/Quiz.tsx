@@ -128,7 +128,7 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply, hasA
   };
 
   return (
-    <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-white/80 shadow-lg mb-6">
+    <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-white/80 shadow-lg mb-4">
       <button
         onClick={onToggle}
         className="w-full py-2 px-4 text-left flex items-center justify-between hover:bg-white/50 transition-colors rounded-xl"
@@ -910,17 +910,17 @@ export default function FlashcardGame() {
 
   return (
     <div className="h-full bg-gradient-to-br from-pink-300 via-orange-300 to-indigo-400 overflow-hidden">
-      <div className="max-w-4xl mx-auto relative z-10 h-full flex flex-col py-8 px-4">
+      <div className="max-w-4xl mx-auto relative z-10 h-full flex flex-col py-6 px-4">
         {/* Header */}
-        <div className="text-center mb-8 flex-shrink-0">
-          <h1 className="text-4xl font-bold text-indigo-900 mb-2">
+        <div className="text-center mb-6 flex-shrink-0">
+          <h1 className="text-3xl font-bold text-indigo-900 mb-2">
             Spanish Conjugations in a Flash!
           </h1>
-          <p className="text-lg text-indigo-700">Practico. Practicas. Practicamos</p>
+          <p className="text-base text-indigo-700">Practico. Practicas. Practicamos</p>
         </div>
 
         {/* Filter Panel and Question/Score grouped together */}
-        <div className="flex-1 flex flex-col space-y-2 min-h-0">
+        <div className="flex-1 flex flex-col space-y-4 min-h-0">
           {/* Filter Panel */}
           <div className="flex-shrink-0">
             <FilterPanel
@@ -946,7 +946,7 @@ export default function FlashcardGame() {
           </div>
 
           {/* Flashcard Container */}
-          <div className="flex-1 flex justify-center items-center">
+          <div className="flex justify-center items-start pt-6">
             <Flashcard 
               key={currentGuess.id}
               guess={currentGuess}
