@@ -12,6 +12,34 @@ from models import Guess, Round, MoodEnum, TenseEnum, PronounEnum, Verb
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
 
+def get_date_format_func(db: Session, date_column, format_str: str):
+    """
+    Get database-specific date formatting function.
+    
+    Args:
+        db: Database session
+        date_column: SQLAlchemy column to format
+        format_str: Format string ('%Y-%m-%d' or '%Y-%m')
+    
+    Returns:
+        SQLAlchemy function for date formatting
+    """
+    engine_name = db.bind.dialect.name
+    
+    if engine_name == 'postgresql':
+        # PostgreSQL uses to_char() for date formatting
+        if format_str == '%Y-%m-%d':
+            return func.to_char(date_column, 'YYYY-MM-DD')
+        elif format_str == '%Y-%m':
+            return func.to_char(date_column, 'YYYY-MM')
+        else:
+            # Fallback for other formats
+            return func.to_char(date_column, format_str.replace('%Y', 'YYYY').replace('%m', 'MM').replace('%d', 'DD'))
+    else:
+        # SQLite and other databases use strftime()
+        return func.strftime(format_str, date_column)
+
+
 class CoverageMetadata(BaseModel):
     total_questions: int
     unique_bins: int
@@ -61,13 +89,15 @@ async def get_coverage_metrics(
     helping identify practice patterns and gaps in coverage.
     """
     
-    # Start with base query  
+    # Start with base query - only count answered questions
     query = db.query(
         Guess.pronoun,
         Guess.tense, 
         Guess.mood,
         func.count(Guess.id).label('question_count')
-    ).join(Verb, Guess.verb_id == Verb.id)
+    ).join(Verb, Guess.verb_id == Verb.id).filter(
+        Guess.user_answer.isnot(None)  # Only include answered questions
+    )
     
     # Apply filters
     if mood:
@@ -228,11 +258,21 @@ async def get_practice_activity(
     
     # Query data based on metric type
     if metric == "questions":
-        # Count answered questions (any guess record)
+        # Count answered questions only (guesses with user_answer)
+        # Use database-specific date formatting
+        if period == "week":
+            # For week view, group by day
+            date_format = get_date_format_func(db, Guess.created_at, '%Y-%m-%d')
+        else:  # month view, group by month
+            date_format = get_date_format_func(db, Guess.created_at, '%Y-%m')
+            
         query = db.query(
-            func.date_trunc(trunc_format if period == "week" else "day", Guess.created_at).label('period_date'),
+            date_format.label('period_date'),
             func.count(Guess.id).label('count')
         )
+        
+        # Only count answered questions (where user_answer is not null)
+        query = query.filter(Guess.user_answer.isnot(None))
         
         if user_id:
             query = query.filter(Guess.user_id == user_id)
@@ -245,7 +285,7 @@ async def get_practice_activity(
             Guess.created_at < overall_end
         )
         
-        query = query.group_by(func.date_trunc(trunc_format if period == "week" else "day", Guess.created_at))
+        query = query.group_by(date_format)
         
     else:  # rounds
         # Count completed rounds (rounds with ended_at set)
