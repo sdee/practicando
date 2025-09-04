@@ -108,3 +108,42 @@ def get_questions(
     return {
         "questions": questions
     }
+
+
+@router.get("/verb-sets/{verb_class}")
+def get_verb_set(
+    verb_class: str,
+    question_service: QuestionService = Depends(get_question_service)
+):
+    """
+    Get all verbs in a specific verb set, sorted alphabetically.
+    
+    Args:
+        verb_class: Verb class like "top10", "top20", etc.
+        question_service: Question service instance
+        
+    Returns:
+        Dictionary with verb class info and list of verbs (sorted alphabetically)
+    """
+    try:
+        verbs = question_service.get_verbs_by_class(verb_class)
+        
+        # Sort verbs alphabetically
+        verbs_sorted = sorted(verbs)
+        
+        return {
+            "verb_class": verb_class,
+            "count": len(verbs_sorted),
+            "verbs": verbs_sorted
+        }
+        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get verb set: {str(e)}"
+        )

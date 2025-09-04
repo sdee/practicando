@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Question, AnswerState, Round, Guess, GamePhase, RoundState, Filters, DEFAULT_NUM_QUESTIONS, QUESTION_COUNT_OPTIONS } from '@/types/flashcard';
 import { createRound, transitionRound, completeRound, getActiveRound, submitGuess } from '@/services/api';
 import { setAppState } from '@/lib/appState';
+import { VerbSetModal } from './VerbSetModal';
 
 interface PronounOption {
   value: string;
@@ -97,6 +98,34 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply, hasA
     { value: 'top500', label: 'Top 500 verbs' },
   ];
 
+  // Helper function to format verb class for display
+  const formatVerbClass = (verbClass: string): string => {
+    const match = verbClass.match(/^top(\d+)$/);
+    if (match) {
+      return `top ${match[1]}`;
+    }
+    return verbClass;
+  };
+
+  // Modal state
+  const [verbModalOpen, setVerbModalOpen] = useState(false);
+  const [selectedVerbClass, setSelectedVerbClass] = useState<string>('');
+
+  // Verb previews (8 random representative verbs for each set)
+  const verbSetPreviews: Record<string, string[]> = {
+    top10: ['ser', 'tener', 'hacer', 'estar', 'decir', 'ir', 'ver', 'dar'],
+    top20: ['poder', 'pasar', 'llegar', 'poner', 'venir', 'salir', 'saber', 'quedar'],
+    top50: ['encontrar', 'seguir', 'creer', 'llevar', 'tratar', 'vivir', 'conocer', 'sentir'],
+    top100: ['contar', 'esperar', 'buscar', 'existir', 'entrar', 'trabajar', 'escribir', 'perder'],
+    top200: ['producir', 'callar', 'explicar', 'tocar', 'reconocer', 'estudiar', 'alcanzar', 'nacer'],
+    top500: ['merecer', 'acompañar', 'aceptar', 'recordar', 'resultar', 'bajar', 'mudar', 'prestar'],
+  };
+
+  const openVerbModal = (verbClass: string) => {
+    setSelectedVerbClass(verbClass);
+    setVerbModalOpen(true);
+  };
+
   // Convert current filters to checkbox states
   const isPronounChecked = (option: PronounOption) => {
     return option.includes.every(pronoun => filters.pronouns.includes(pronoun));
@@ -149,7 +178,7 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply, hasA
         <div className="flex items-center space-x-2">
           <span className="text-lg font-semibold text-slate-700">Filters</span>
           <span className="text-sm text-slate-500">
-            ({filters.pronouns.length} pronouns, {filters.tenses.length} tenses, {filters.moods.length} moods, {filters.verb_class || 'top20'})
+            ({filters.pronouns.length} pronouns, {filters.tenses.length} tenses, {filters.moods.length} moods, {formatVerbClass(filters.verb_class || 'top20')})
           </span>
         </div>
         <div className={`transform transition-transform ${isOpen ? 'rotate-180' : ''}`}>
@@ -157,7 +186,7 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply, hasA
         </div>
       </button>
       
-      <div style={{ maxHeight: isOpen ? '1000px' : '0px', opacity: isOpen ? 1 : 0, overflow: 'hidden' }}>
+      <div style={{ maxHeight: isOpen ? '1000px' : '0px', opacity: isOpen ? 1 : 0, overflow: isOpen ? 'visible' : 'hidden' }}>
         <div className="py-3 px-4 border-t border-slate-200">
           {hasActiveRound && (
             <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -222,12 +251,13 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply, hasA
               </div>
             </div>
 
-            {/* Verb Set */}
+            {/* Verb Sets */}
             <div>
-              <h3 className="font-semibold text-slate-700 mb-3">Verb Set</h3>
+              <h3 className="font-semibold text-slate-700 mb-1">Verb Sets</h3>
+              <p className="text-xs text-slate-500 mb-3 italic">Click book to see verbs</p>
               <div className="space-y-2">
                 {verbSetOptions.map(option => (
-                  <label key={option.value} className="flex items-center space-x-2 cursor-pointer">
+                  <div key={option.value} className="flex items-center space-x-2">
                     <input
                       type="radio"
                       name="verbSet"
@@ -236,8 +266,44 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply, hasA
                       onChange={() => handleVerbSetChange(option.value)}
                       className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500"
                     />
-                    <span className="text-sm text-slate-600">{option.label}</span>
-                  </label>
+
+                    {/* Book icon with hover tooltip for preview */}
+                    <div className="group relative flex items-center">
+                      <button
+                        onClick={() => openVerbModal(option.value)}
+                        className="w-5 h-5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded p-0.5 transition-all duration-200 cursor-pointer"
+                        title="Click to view all verbs in this set"
+                      >
+                        <svg
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          className="w-full h-full"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C20.168 18.477 18.582 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                          />
+                        </svg>
+                      </button>
+                      <div className="absolute left-0 bottom-full mb-1 bg-gray-900 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+                        <div className="whitespace-nowrap">
+                          {verbSetPreviews[option.value].join(', ')}{option.value !== 'top10' && '...'}
+                        </div>
+                        <div className="text-center text-gray-300 text-xs mt-1 italic">
+                          Click for more details
+                        </div>
+                        {/* Tooltip arrow */}
+                        <div className="absolute top-full left-3 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-gray-900"></div>
+                      </div>
+                    </div>
+
+                    <label htmlFor={`verbset-${option.value}`} className="text-sm text-slate-600 cursor-pointer">
+                      {option.label}
+                    </label>
+                  </div>
                 ))}
               </div>
             </div>
@@ -281,6 +347,13 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply, hasA
           </div>
         </div>
       </div>
+
+      {/* Verb Set Modal */}
+      <VerbSetModal
+        isOpen={verbModalOpen}
+        onClose={() => setVerbModalOpen(false)}
+        verbClass={selectedVerbClass}
+      />
     </div>
   );
 }

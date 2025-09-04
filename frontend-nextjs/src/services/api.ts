@@ -12,6 +12,12 @@ export interface TransitionResponse {
   transition_reason: string;
 }
 
+export interface VerbSet {
+  verb_class: string;
+  count: number;
+  verbs: string[];
+}
+
 // Legacy function for backward compatibility
 export async function fetchQuestions(count: number = 15, filters?: Filters): Promise<QuestionResponse> {
   const params = new URLSearchParams();
@@ -170,3 +176,14 @@ export async function submitGuess(guessId: number, userAnswer: string, isCorrect
     // Fail silently - don't block user experience
   }
 }
+
+// Get all verbs in a specific verb set (sorted alphabetically)
+export const getVerbSet = async (verbClass: string): Promise<VerbSet> => {
+  const response = await fetch(`/api/questions/verb-sets/${verbClass}`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch verb set: ${response.statusText}`);
+  }
+  
+  return response.json();
+};
