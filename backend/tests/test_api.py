@@ -65,12 +65,13 @@ class TestQuestionsAPI:
         assert data["questions"][0]["pronoun"] == "yo"
         assert data["questions"][0]["answer"] == "hablo"
         
-        # Verify service was called with defaults
+        # Verify service was called with defaults (now includes verb_class)
         mock_question_service.generate_questions.assert_called_once_with(
             pronouns=["yo", "tu"], 
             tenses=["present"], 
             moods=["indicative"], 
-            limit=1
+            limit=1,
+            verb_class="top20"
         )
     
     def test_get_questions_custom_params(self, client, mock_question_service):
@@ -82,7 +83,8 @@ class TestQuestionsAPI:
             pronouns=["el"], 
             tenses=["preterite"], 
             moods=["subjunctive"], 
-            limit=3
+            limit=3,
+            verb_class="top20"
         )
     
     def test_get_questions_invalid_pronoun(self, client):
@@ -121,5 +123,6 @@ class TestQuestionsAPI:
             pronouns=["yo", "tu"], 
             tenses=["present", "preterite"], 
             moods=["indicative"], 
-            limit=1
+            limit=1,
+            verb_class="top20"
         )

@@ -11,10 +11,35 @@ def mock_conjugator():
     return conjugator
 
 
+@pytest.fixture 
+def mock_db():
+    """Mock database session with proper verb query mocking"""
+    db = Mock()
+    
+    # Create mock verb objects  
+    mock_verb1 = Mock()
+    mock_verb1.infinitive = "hablar"
+    mock_verb1.tubelex_rank = 1
+    
+    mock_verb2 = Mock() 
+    mock_verb2.infinitive = "ser"
+    mock_verb2.tubelex_rank = 2
+    
+    mock_verb3 = Mock()
+    mock_verb3.infinitive = "tener"
+    mock_verb3.tubelex_rank = 3
+    
+    # Mock the query chain for getting verbs by class
+    mock_verbs = [mock_verb1, mock_verb2, mock_verb3]
+    db.query.return_value.filter.return_value.order_by.return_value.limit.return_value.all.return_value = mock_verbs
+    
+    return db
+
+
 @pytest.fixture
-def question_service(mock_conjugator):
-    """Create a QuestionService with mocked conjugator"""
-    return QuestionService(mock_conjugator)
+def question_service(mock_conjugator, mock_db):
+    """Create a QuestionService with mocked conjugator and db"""
+    return QuestionService(mock_conjugator, mock_db)
 
 
 @pytest.fixture
@@ -24,9 +49,9 @@ def real_conjugator():
 
 
 @pytest.fixture
-def real_question_service(real_conjugator):
+def real_question_service(real_conjugator, mock_db):
     """Create a QuestionService with real conjugator for verb tests"""
-    return QuestionService(real_conjugator)
+    return QuestionService(real_conjugator, mock_db)
 
 
 class TestQuestionService:
@@ -50,11 +75,11 @@ class TestQuestionService:
         assert questions[0]["tense"] == "present"
         assert questions[0]["mood"] == "indicative"
         assert questions[0]["answer"] == "hablo"
-        assert questions[0]["verb"] in question_service.default_verbs
+        # Verb should be one of our mocked verbs from the database
+        assert questions[0]["verb"] in ["hablar", "ser", "tener"]
     
     def test_generate_questions_custom_verbs(self, question_service, mock_conjugator):
-        """Test question generation with custom verbs"""
-        custom_verbs = ["ser", "estar"]
+        """Test question generation with different verb class"""
         mock_conjugator.conjugate.return_value = "soy"
         
         with patch('services.extract_conjugation_from_response', return_value="soy"):
@@ -63,10 +88,13 @@ class TestQuestionService:
                 tenses=["present"],
                 moods=["indicative"], 
                 limit=1,
-                verbs=custom_verbs
+                verb_class="top10"
             )
         
-        assert questions[0]["verb"] in custom_verbs
+        assert len(questions) == 1
+        assert questions[0]["answer"] == "soy" 
+        # Verb should be one of our mocked verbs from the database
+        assert questions[0]["verb"] in ["hablar", "ser", "tener"]
     
     def test_generate_questions_multiple_options(self, question_service, mock_conjugator):
         """Test that random selection works with multiple options"""
@@ -91,7 +119,8 @@ class TestQuestionService:
             assert question["pronoun"] in pronouns
             assert question["tense"] in tenses  
             assert question["mood"] in moods
-            assert question["verb"] in question_service.default_verbs
+            # Verify verb is one of our mocked database verbs
+            assert question["verb"] in ["hablar", "ser", "tener"]
             assert question["answer"] == "test_answer"
     
     def test_generate_questions_empty_lists(self, question_service):
