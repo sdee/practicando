@@ -56,6 +56,16 @@ INDICATIVE_PRONOUN_KEY_MAP = {
     "ustedes": "ellos/ellas/ustedes"
 }
 
+# Manual corrections for known bugs in the spanishconjugator library
+# To add more corrections, add entries in the format:
+# (verb, tense, mood, pronoun): 'correct_conjugation'
+CONJUGATION_CORRECTIONS = {
+    # Key: (verb, tense, mood, pronoun) -> corrected_form
+    ('poner', 'present', 'indicative', 'yo'): 'pongo',
+    # Add more corrections here as they are discovered:
+    # ('verb', 'tense', 'mood', 'pronoun'): 'correct_form',
+}
+
 def normalize_pronoun(pronoun, mood="indicative"):
     """
     Convert pronoun to the form expected by the conjugator.
@@ -66,13 +76,20 @@ def normalize_pronoun(pronoun, mood="indicative"):
     else:
         return PRONOUN_CONJUGATOR_MAP.get(pronoun, pronoun)
 
-def extract_conjugation_from_response(response, pronoun, mood):
+def extract_conjugation_from_response(response, pronoun, mood, verb=None, tense=None):
     """
     Extract the correct conjugation from the conjugator response.
     Handles both dict responses (indicative) and string responses (subjunctive)
+    Also applies manual corrections for known conjugator bugs.
     """
     if response is None:
         return None
+    
+    # Check for manual corrections first (if verb and tense provided)
+    if verb and tense:
+        correction_key = (verb, tense, mood, pronoun)
+        if correction_key in CONJUGATION_CORRECTIONS:
+            return CONJUGATION_CORRECTIONS[correction_key]
         
     # If it's a dictionary (indicative mood), extract the right conjugation
     if isinstance(response, dict):
@@ -98,8 +115,8 @@ def extract_conjugation_from_response(response, pronoun, mood):
 
 def parse_tubelex_verbs_file(file_path: str) -> List[Dict[str, Any]]:
     """
-    Parses the TubeLex verbs TSV file and returns infinitive, rank, and count. 
-    Data sourced from the TubeLex corpus of YouTube subtitles (https://github.com/naist-nlp/tubelex).
+    Parses the TubeLlex verbs TSV file and returns infinitive, rank, and count. 
+    Data sourced from the Tubelex corpus of multi-lingual YouTube subtitles (https://github.com/naist-nlp/tubelex).
     
     Args:
         file_path: Path to the TSV file containing verb frequency data

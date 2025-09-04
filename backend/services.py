@@ -146,7 +146,9 @@ class QuestionService:
             conjugation_response = self.conjugator.conjugate(verb, tense, mood, normalized_pronoun)
             
             # Extract the correct conjugation based on mood and pronoun
-            answer = extract_conjugation_from_response(conjugation_response, pronoun, mood)
+            answer = extract_conjugation_from_response(
+                conjugation_response, pronoun, mood, verb, tense
+            )
             
             # Validate the answer - if it's too short, it's probably a conjugator bug
             if answer and len(answer) < 3:
