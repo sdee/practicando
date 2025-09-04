@@ -8,8 +8,33 @@ from spanishconjugator import Conjugator
 # Import from dependencies instead of main to avoid circular imports
 from dependencies import get_conjugator, get_question_service
 from services import QuestionService
+from models import PronounEnum, TenseEnum, MoodEnum
 
 router = APIRouter()
+
+def validate_enum_lists(pronouns: List[str], tenses: List[str], moods: List[str]):
+    """Validate that all values in the lists are valid enum values"""
+    errors = []
+    
+    # Validate pronouns
+    valid_pronouns = {e.value for e in PronounEnum}
+    for pronoun in pronouns:
+        if pronoun not in valid_pronouns:
+            errors.append(f"Invalid value '{pronoun}' for pronoun. Valid values: {list(valid_pronouns)}")
+    
+    # Validate tenses  
+    valid_tenses = {e.value for e in TenseEnum}
+    for tense in tenses:
+        if tense not in valid_tenses:
+            errors.append(f"Invalid value '{tense}' for tense. Valid values: {list(valid_tenses)}")
+            
+    # Validate moods
+    valid_moods = {e.value for e in MoodEnum}  
+    for mood in moods:
+        if mood not in valid_moods:
+            errors.append(f"Invalid value '{mood}' for mood. Valid values: {list(valid_moods)}")
+    
+    return errors
 
 class FilterParams(BaseModel):
     pronoun: List[str] = Field(default=["yo", "tu"], description="Filter by pronouns (yo, tu, usted, etc.)")
@@ -28,6 +53,17 @@ def get_questions(
     question_service: QuestionService = Depends(get_question_service)
 ):
     """Get questions with random combinations of pronouns, tenses, and moods"""
+    
+    # Validate enum values first
+    validation_errors = validate_enum_lists(pronoun, tense, mood)
+    if validation_errors:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Validation failed",
+                "errors": validation_errors
+            }
+        )
     
     # Create FilterParams object from the query parameters with validation error handling
     try:
