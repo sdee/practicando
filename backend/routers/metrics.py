@@ -89,13 +89,15 @@ async def get_coverage_metrics(
     helping identify practice patterns and gaps in coverage.
     """
     
-    # Start with base query  
+    # Start with base query - only count answered questions
     query = db.query(
         Guess.pronoun,
         Guess.tense, 
         Guess.mood,
         func.count(Guess.id).label('question_count')
-    ).join(Verb, Guess.verb_id == Verb.id)
+    ).join(Verb, Guess.verb_id == Verb.id).filter(
+        Guess.user_answer.isnot(None)  # Only include answered questions
+    )
     
     # Apply filters
     if mood:
@@ -256,7 +258,7 @@ async def get_practice_activity(
     
     # Query data based on metric type
     if metric == "questions":
-        # Count answered questions (any guess record)
+        # Count answered questions only (guesses with user_answer)
         # Use database-specific date formatting
         if period == "week":
             # For week view, group by day
@@ -268,6 +270,9 @@ async def get_practice_activity(
             date_format.label('period_date'),
             func.count(Guess.id).label('count')
         )
+        
+        # Only count answered questions (where user_answer is not null)
+        query = query.filter(Guess.user_answer.isnot(None))
         
         if user_id:
             query = query.filter(Guess.user_id == user_id)
