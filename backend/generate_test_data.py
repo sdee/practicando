@@ -195,29 +195,35 @@ def weighted_choice(choices_weights: Dict) -> any:
 def generate_conjugation(verb: str, pronoun: PronounEnum, tense: TenseEnum) -> Tuple[str, bool]:
     """
     Generate a conjugation and determine if the user got it right.
-    This is a simplified version - in reality you'd have proper conjugation rules.
+    Uses the real conjugation service to avoid placeholder answers.
     """
-    # Simplified conjugations for demo purposes
-    # In a real app, you'd have comprehensive conjugation rules
+    # Import here to avoid circular imports
+    from services import QuestionService
+    from spanishconjugator import Conjugator
+    from db import get_sessionmaker
     
-    conjugations = {
-        ('ser', PronounEnum.yo, TenseEnum.present): 'soy',
-        ('ser', PronounEnum.tu, TenseEnum.present): 'eres', 
-        ('ser', PronounEnum.el, TenseEnum.present): 'es',
-        ('ser', PronounEnum.ella, TenseEnum.present): 'es',
-        ('estar', PronounEnum.yo, TenseEnum.present): 'estoy',
-        ('estar', PronounEnum.tu, TenseEnum.present): 'estás',
-        ('tener', PronounEnum.yo, TenseEnum.present): 'tengo',
-        ('tener', PronounEnum.tu, TenseEnum.present): 'tienes',
-        # Add more as needed...
-    }
-    
-    key = (verb, pronoun, tense)
-    if key in conjugations:
-        correct_answer = conjugations[key]
-    else:
-        # Generic fallback for demo
-        correct_answer = f"{verb}_conjugated_{pronoun.value}_{tense.value}"
+    # Use real conjugation service instead of hardcoded values
+    SessionLocal = get_sessionmaker()
+    db = SessionLocal()
+    try:
+        conjugator = Conjugator()
+        service = QuestionService(conjugator, db)
+        
+        # Get real conjugation
+        correct_answer = service._get_conjugation(verb, tense.value, "indicative", pronoun.value)
+        
+        # If conjugation fails, skip this combination instead of using placeholder
+        if not correct_answer or len(correct_answer.strip()) < 2:
+            print(f"⚠️  Skipping {verb}/{pronoun.value}/{tense.value} - conjugation failed")
+            db.close()
+            return None, False
+            
+    except Exception as e:
+        print(f"❌ Error generating conjugation for {verb}/{pronoun.value}/{tense.value}: {e}")
+        db.close()
+        return None, False
+    finally:
+        db.close()
     
     # Determine accuracy based on tense difficulty
     accuracy_base = INDICATIVE_TENSES[tense]['accuracy_base']
@@ -226,6 +232,8 @@ def generate_conjugation(verb: str, pronoun: PronounEnum, tense: TenseEnum) -> T
     final_accuracy = max(30, min(95, accuracy_base + verb_difficulty_modifier))
     
     is_correct = random.random() * 100 < final_accuracy
+    
+    return correct_answer, is_correct
     
     if is_correct:
         user_answer = correct_answer
@@ -265,10 +273,26 @@ def create_practice_session(session, verb_ids: Dict[str, int],
         pronoun = weighted_choice(PRONOUN_WEIGHTS)
         
         # Generate conjugation and accuracy
-        correct_answer, is_correct, user_answer = generate_conjugation(verb_name, pronoun, tense)
+        conjugation_result = generate_conjugation(verb_name, pronoun, tense)
         
+        # Skip if conjugation failed
+        if conjugation_result[0] is None:
+            continue
+            
+        correct_answer, is_correct = conjugation_result
+        
+        # Generate user answer based on accuracy
         if is_correct:
+            user_answer = correct_answer
             correct_answers += 1
+        else:
+            # Generate a plausible wrong answer by modifying the ending
+            if len(correct_answer) > 3:
+                # Change last 1-2 characters for a realistic mistake
+                wrong_endings = ['o', 'as', 'a', 'amos', 'an', 'es', 'e']
+                user_answer = correct_answer[:-2] + random.choice(wrong_endings)
+            else:
+                user_answer = correct_answer + "x"  # Simple modification for short words
         
         # Question timestamp within the round
         question_time = practice_time + timedelta(seconds=i * random.randint(10, 60))
@@ -346,6 +370,29 @@ def generate_test_data(months_back: int = 3):
         session.close()
 
 if __name__ == "__main__":
+    import os
+    
+    # Safety check: prevent running in production
+    environment = os.getenv('ENVIRONMENT', os.getenv('ENV', 'development')).lower()
+    if environment in ['production', 'prod']:
+        print("🚨 ERROR: Cannot run test data generation in production environment!")
+        print("   Set ENVIRONMENT='development' or ENV='development' to override")
+        exit(1)
+    
+    # Additional safety check for AWS Elastic Beanstalk
+    if os.getenv('RDS_HOSTNAME') or os.getenv('AWS_REGION'):
+        print("🚨 ERROR: AWS environment detected - test data generation is disabled!")
+        print("   This appears to be a production deployment.")
+        exit(1)
+    
     print("🇪🇸 Spanish Conjugation Test Data Generator")
+    print(f"📍 Environment: {environment}")
     print("=" * 50)
+    
+    # Confirm before generating data
+    response = input("⚠️  This will generate test data in your database. Continue? (y/N): ")
+    if response.lower() != 'y':
+        print("❌ Cancelled - no test data generated")
+        exit(0)
+    
     generate_test_data(months_back=3)
