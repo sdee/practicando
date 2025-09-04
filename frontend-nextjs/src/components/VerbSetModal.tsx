@@ -90,14 +90,14 @@ export const VerbSetModal: React.FC<VerbSetModalProps> = ({
           {verbSet && !loading && !error && (
             <div className="flex flex-wrap gap-2 justify-center">
               {verbSet.verbs.map((verb, index) => {
-                // Create variety in colors by cycling through different gradients - 10% more subtle
+                // Create variety in colors by cycling through different gradients - even more subtle
                 const colorVariants = [
-                  'bg-gradient-to-br from-slate-50 to-blue-50 hover:from-blue-50 hover:to-blue-100 border-slate-200 text-blue-600',
-                  'bg-gradient-to-br from-slate-50 to-purple-50 hover:from-purple-50 hover:to-purple-100 border-slate-200 text-purple-600',
-                  'bg-gradient-to-br from-slate-50 to-emerald-50 hover:from-emerald-50 hover:to-emerald-100 border-slate-200 text-emerald-600',
-                  'bg-gradient-to-br from-slate-50 to-rose-50 hover:from-rose-50 hover:to-rose-100 border-slate-200 text-rose-600',
-                  'bg-gradient-to-br from-slate-50 to-indigo-50 hover:from-indigo-50 hover:to-indigo-100 border-slate-200 text-indigo-600',
-                  'bg-gradient-to-br from-slate-50 to-teal-50 hover:from-teal-50 hover:to-teal-100 border-slate-200 text-teal-600'
+                  'bg-gradient-to-br from-white to-blue-50/50 hover:from-blue-50/30 hover:to-blue-50 border-slate-100 text-blue-500',
+                  'bg-gradient-to-br from-white to-purple-50/50 hover:from-purple-50/30 hover:to-purple-50 border-slate-100 text-purple-500',
+                  'bg-gradient-to-br from-white to-emerald-50/50 hover:from-emerald-50/30 hover:to-emerald-50 border-slate-100 text-emerald-500',
+                  'bg-gradient-to-br from-white to-rose-50/50 hover:from-rose-50/30 hover:to-rose-50 border-slate-100 text-rose-500',
+                  'bg-gradient-to-br from-white to-indigo-50/50 hover:from-indigo-50/30 hover:to-indigo-50 border-slate-100 text-indigo-500',
+                  'bg-gradient-to-br from-white to-teal-50/50 hover:from-teal-50/30 hover:to-teal-50 border-slate-100 text-teal-500'
                 ];
                 const colorClass = colorVariants[index % colorVariants.length];
                 
