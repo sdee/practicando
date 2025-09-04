@@ -53,7 +53,7 @@ export async function createRound(filters: Filters): Promise<RoundResponse> {
       moods: filters.moods,
     },
     num_questions: filters.num_questions || DEFAULT_NUM_QUESTIONS,
-    verb_class: 'top20',  // Minimum change - use default verb class
+    verb_class: filters.verb_class || 'top20',  // Use verb_class from filters, default to top20
   };
 
   console.log('📡 Request body being sent:', requestBody);
@@ -101,7 +101,7 @@ export async function transitionRound(currentRoundId: number, filters: Filters):
         moods: filters.moods,
       },
       num_questions: filters.num_questions || DEFAULT_NUM_QUESTIONS,
-      verb_class: 'top20',  // Minimum change - use default verb class
+      verb_class: filters.verb_class || 'top20',  // Use verb_class from filters, default to top20
     }),
   });
 

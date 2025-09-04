@@ -88,6 +88,15 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply, hasA
     { value: 'subjunctive', label: 'Subjunctive' },
   ];
 
+  const verbSetOptions = [
+    { value: 'top10', label: 'Top 10 verbs' },
+    { value: 'top20', label: 'Top 20 verbs' },
+    { value: 'top50', label: 'Top 50 verbs' },
+    { value: 'top100', label: 'Top 100 verbs' },
+    { value: 'top200', label: 'Top 200 verbs' },
+    { value: 'top500', label: 'Top 500 verbs' },
+  ];
+
   // Convert current filters to checkbox states
   const isPronounChecked = (option: PronounOption) => {
     return option.includes.every(pronoun => filters.pronouns.includes(pronoun));
@@ -127,6 +136,10 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply, hasA
     onFiltersChange({ ...filters, moods: newMoods });
   };
 
+  const handleVerbSetChange = (verbSet: string) => {
+    onFiltersChange({ ...filters, verb_class: verbSet });
+  };
+
   return (
     <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-white/80 shadow-lg mb-4">
       <button
@@ -136,7 +149,7 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply, hasA
         <div className="flex items-center space-x-2">
           <span className="text-lg font-semibold text-slate-700">Filters</span>
           <span className="text-sm text-slate-500">
-            ({filters.pronouns.length} pronouns, {filters.tenses.length} tenses, {filters.moods.length} moods)
+            ({filters.pronouns.length} pronouns, {filters.tenses.length} tenses, {filters.moods.length} moods, {filters.verb_class || 'top20'})
           </span>
         </div>
         <div className={`transform transition-transform ${isOpen ? 'rotate-180' : ''}`}>
@@ -154,7 +167,7 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply, hasA
             </div>
           )}
           
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Pronouns */}
             <div>
               <h3 className="font-semibold text-slate-700 mb-3">Pronouns</h3>
@@ -202,6 +215,26 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply, hasA
                       checked={filters.moods.includes(option.value)}
                       onChange={(e) => handleMoodChange(option.value, e.target.checked)}
                       className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-slate-600">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Verb Set */}
+            <div>
+              <h3 className="font-semibold text-slate-700 mb-3">Verb Set</h3>
+              <div className="space-y-2">
+                {verbSetOptions.map(option => (
+                  <label key={option.value} className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="verbSet"
+                      value={option.value}
+                      checked={(filters.verb_class || 'top20') === option.value}
+                      onChange={() => handleVerbSetChange(option.value)}
+                      className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500"
                     />
                     <span className="text-sm text-slate-600">{option.label}</span>
                   </label>

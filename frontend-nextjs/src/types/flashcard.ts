@@ -32,6 +32,7 @@ export interface Filters {
   tenses: string[];
   moods: string[];
   num_questions?: number;
+  verb_class?: string; // New: for verb set filtering (top10, top20, etc.)
 }
 
 // Round-related types
