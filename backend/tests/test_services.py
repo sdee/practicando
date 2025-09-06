@@ -218,3 +218,48 @@ class TestQuestionService:
             )
             
             assert result == case["expected"], f"Failed for irregular verb {case['verb']} with {case['pronoun']}: expected {case['expected']}, got {result}"
+
+    def test_generate_questions_unique_combinations(self, question_service, mock_conjugator):
+        """Test that questions have unique combinations of pronoun, verb, tense, and mood"""
+        mock_conjugator.conjugate.return_value = "test_answer"
+        
+        with patch('services.extract_conjugation_from_response', return_value="test_answer"):
+            # Generate multiple questions with limited options to force potential duplicates
+            questions = question_service.generate_questions(
+                pronouns=["yo", "tu"],
+                tenses=["present"],
+                moods=["indicative"],
+                limit=10  # More than the number of unique combinations available
+            )
+        
+        # Check for uniqueness by creating a set of combinations
+        combinations = set()
+        for question in questions:
+            combination = (question["pronoun"], question["verb"], question["tense"], question["mood"])
+            assert combination not in combinations, f"Duplicate combination found: {combination}"
+            combinations.add(combination)
+        
+        # Since we have only 2 pronouns × 3 verbs × 1 tense × 1 mood = 6 possible combinations,
+        # we should get at most 6 questions
+        assert len(questions) <= 6, f"Expected at most 6 unique questions, got {len(questions)}"
+    
+    def test_generate_questions_insufficient_combinations(self, question_service, mock_conjugator):
+        """Test behavior when requesting more questions than unique combinations available"""
+        mock_conjugator.conjugate.return_value = "test_answer"
+        
+        with patch('services.extract_conjugation_from_response', return_value="test_answer"):
+            # With only 1 pronoun, 1 verb (limited by mock), 1 tense, 1 mood,
+            # we can only get 3 unique combinations max (due to 3 mocked verbs)
+            questions = question_service.generate_questions(
+                pronouns=["yo"],
+                tenses=["present"],
+                moods=["indicative"],
+                limit=10  # Request more than available
+            )
+        
+        # Should get at most 3 questions (one for each of the 3 mocked verbs)
+        assert len(questions) <= 3, f"Expected at most 3 unique questions, got {len(questions)}"
+        
+        # Verify all questions are unique
+        combinations = {(q["pronoun"], q["verb"], q["tense"], q["mood"]) for q in questions}
+        assert len(combinations) == len(questions), "All questions should have unique combinations"
