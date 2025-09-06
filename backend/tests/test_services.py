@@ -194,30 +194,6 @@ class TestQuestionService:
             )
             
             assert result == case["expected"], f"Failed for irregular verb {case['verb']} with {case['pronoun']}: expected {case['expected']}, got {result}"
-    
-    def test_irregular_verb_conjugations(self, real_question_service):
-        """Test conjugations for common irregular verbs"""
-        irregular_cases = [
-            {"verb": "ser", "pronoun": "yo", "tense": "present", "mood": "indicative", "expected": "soy"},
-            {"verb": "ser", "pronoun": "tu", "tense": "present", "mood": "indicative", "expected": "eres"},
-            
-            {"verb": "estar", "pronoun": "yo", "tense": "present", "mood": "indicative", "expected": "estoy"},
-            {"verb": "estar", "pronoun": "ella", "tense": "present", "mood": "indicative", "expected": "está"},
-            
-            {"verb": "ir", "pronoun": "yo", "tense": "present", "mood": "indicative", "expected": "voy"},
-            {"verb": "ir", "pronoun": "ellos", "tense": "present", "mood": "indicative", "expected": "van"},
-        ]
-        
-        for case in irregular_cases:
-            # Use the actual conjugator and extraction logic
-            result = real_question_service._get_conjugation(
-                case["verb"], 
-                case["tense"], 
-                case["mood"], 
-                case["pronoun"]
-            )
-            
-            assert result == case["expected"], f"Failed for irregular verb {case['verb']} with {case['pronoun']}: expected {case['expected']}, got {result}"
 
     def test_generate_questions_unique_combinations(self, question_service, mock_conjugator):
         """Test that questions have unique combinations of pronoun, verb, tense, and mood"""
