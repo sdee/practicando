@@ -72,6 +72,7 @@ class QuestionService:
     ) -> List[Dict[str, Any]]:
         """
         Generate random conjugation questions based on the provided filters.
+        Ensures unique combinations of pronoun, verb, tense, and mood in each round.
         
         Args:
             pronouns: List of pronouns to choose from
@@ -93,7 +94,8 @@ class QuestionService:
             raise ValueError(f"No verbs available for class '{verb_class}'")
             
         questions = []
-        max_attempts = limit * 3  # Try up to 3x the limit to account for failures
+        seen_combinations = set()  # Track unique combinations
+        max_attempts = limit * 5  # Increase attempts to account for duplicate avoidance
         attempts = 0
         
         while len(questions) < limit and attempts < max_attempts:
@@ -105,6 +107,13 @@ class QuestionService:
             mood_choice = random.choice(moods)
             verb_choice = random.choice(verbs)
             
+            # Create combination key for uniqueness check
+            combination = (pronoun_choice, verb_choice, tense_choice, mood_choice)
+            
+            # Skip if we've seen this combination before
+            if combination in seen_combinations:
+                continue
+                
             # Generate conjugation
             answer = self._get_conjugation(
                 verb_choice, 
@@ -115,6 +124,7 @@ class QuestionService:
             
             # Only add question if conjugation was successful
             if answer and len(answer.strip()) > 0:
+                seen_combinations.add(combination)
                 questions.append({
                     'pronoun': pronoun_choice,
                     'tense': tense_choice,
