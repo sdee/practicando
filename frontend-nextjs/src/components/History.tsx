@@ -215,10 +215,6 @@ export default function History({ onBack }: HistoryProps) {
           )}
           
           <h1 className="text-3xl font-bold text-slate-800">Practice History</h1>
-          
-          <div className="text-slate-600">
-            {rounds.length} round{rounds.length !== 1 ? 's' : ''}
-          </div>
         </div>
 
         {/* Rounds List */}
