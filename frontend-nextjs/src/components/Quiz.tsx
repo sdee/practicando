@@ -470,7 +470,7 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
   return (
     <div 
       className={`
-        w-[480px] h-96 mx-auto p-6 rounded-2xl shadow-lg border-2 transition-all duration-300 flex flex-col justify-between hover:shadow-xl
+        w-[572px] h-[458px] mx-auto p-6 pb-8 rounded-2xl shadow-lg border-2 transition-all duration-300 flex flex-col justify-between hover:shadow-xl
         ${state === 'correct' ? 'border-emerald-300 shadow-emerald-200/30' : 
           state === 'incorrect' ? 'border-rose-300 shadow-rose-200/30' : 
           'border-slate-300 shadow-slate-200/30'}
@@ -487,14 +487,16 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
         <div className="text-sm font-medium text-slate-500 mb-2 tracking-wide uppercase">
           Question {questionNumber} of {totalQuestions}
         </div>
-        <div className="text-3xl font-bold text-slate-800 mb-3">
+        <div className="text-3xl font-bold text-slate-800 mb-4">
           {guess.verb}
         </div>
-        <div className="flex justify-center space-x-2 text-sm">
+        <div className="flex justify-center space-x-3 mb-3">
           <span className="px-4 py-1.5 bg-pink-500 text-white rounded-full font-medium text-sm">{guess.pronoun}</span>
           <span className="px-4 py-1.5 bg-yellow-500 text-white rounded-full font-medium text-sm">{guess.tense}</span>
-          <span className="px-4 py-1.5 bg-indigo-900 text-white rounded-full font-medium text-sm">{guess.mood}</span>
         </div>
+        <div className="flex justify-center mb-4">
+          <span className="px-4 py-1.5 bg-indigo-900 text-white rounded-full font-medium text-sm">{guess.mood}</span>
+        </div> 
         {allowRetry && previousGuess && !showAnswer && hasRetried && (
           <div className="mt-2 text-sm">
             <span className="text-slate-600">Previous guess: </span>
@@ -528,11 +530,12 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
             <button
               type="button"
               onClick={onSkip}
-              className="w-full bg-slate-300 text-slate-800 py-2.5 px-4 rounded-xl hover:bg-slate-400 font-medium text-base transition-colors"
+              className="w-full bg-slate-300 text-slate-800 py-4 px-4 rounded-xl hover:bg-slate-400 font-medium text-base transition-colors"
               aria-keyshortcuts="Esc"
             >
               Skip (Esc)
             </button>
+            <div className="h-4"></div> {/* Spacer div for bottom padding */}
             {allowRetry && (
               <div className="text-center text-xs mt-1">
                 {hasRetried ? (
