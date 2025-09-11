@@ -310,15 +310,21 @@ export default function History({ onBack }: HistoryProps) {
                                   
                                   <div className="flex items-center gap-4">
                                     <div className="text-sm">
-                                      <span className="text-slate-600">Your answer: </span>
-                                      <span className={`font-medium ${
-                                        question.is_correct ? 'text-green-600' : 'text-red-600'
-                                      }`}>
-                                        {question.user_answer || '(no answer)'}
-                                      </span>
+                                      {question.skipped ? (
+                                        <span className="text-slate-500 italic">Skipped</span>
+                                      ) : (
+                                        <>
+                                          <span className="text-slate-600">Your answer: </span>
+                                          <span className={`font-medium ${
+                                            question.is_correct ? 'text-green-600' : 'text-red-600'
+                                          }`}>
+                                            {question.user_answer || '(no answer)'}
+                                          </span>
+                                        </>
+                                      )}
                                     </div>
                                     
-                                    {!question.is_correct && (
+                                    {!question.skipped && !question.is_correct && (
                                       <div className="text-sm">
                                         <span className="text-slate-600">Correct: </span>
                                         <span className="font-medium text-green-600">
@@ -328,9 +334,9 @@ export default function History({ onBack }: HistoryProps) {
                                     )}
                                     
                                     <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-sm ${
-                                      question.is_correct ? 'bg-green-500' : 'bg-red-500'
-                                    }`}>
-                                      {question.is_correct ? '✓' : '✗'}
+                                      question.skipped ? 'bg-amber-500' : (question.is_correct ? 'bg-green-500' : 'bg-red-500')
+                                    }`} title={question.skipped ? 'Skipped' : (question.is_correct ? 'Correct' : 'Incorrect')}>
+                                      {question.skipped ? '−' : (question.is_correct ? '✓' : '✗')}
                                     </div>
                                   </div>
                                 </div>

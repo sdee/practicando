@@ -30,7 +30,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body: any = null;
+    try {
+      body = await request.json();
+    } catch (e) {
+      // Gracefully handle empty or invalid JSON
+      return Response.json(
+        { error: 'Invalid or missing JSON body' },
+        { status: 400 }
+      );
+    }
     
     const backendUrl = `${BACKEND_URL}/api/rounds`;
     
@@ -42,15 +51,27 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     });
     
-    const data = await response.json();
-    
-    return Response.json(data, {
-      status: response.status,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json',
-      },
-    });
+    // Try to forward JSON; if not JSON, forward text
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await response.json();
+      return Response.json(data, {
+        status: response.status,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json',
+        },
+      });
+    } else {
+      const text = await response.text();
+      return new Response(text, {
+        status: response.status,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': contentType || 'text/plain',
+        },
+      });
+    }
   } catch (error) {
     console.error('Failed to create round:', error);
     return Response.json(
