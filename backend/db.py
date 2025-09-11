@@ -14,11 +14,33 @@ if os.path.exists('.env'):
         # python-dotenv not available, skip loading .env file
         pass
 
+# Get database mode from environment
+DB_MODE = os.getenv('DATABASE_MODE', 'learn')
+
+def _get_db_configs():
+    """Build database configurations from environment variables"""
+    return {
+        'test': os.getenv('TEST_DATABASE_URL', 'sqlite:///./test_app.db'),
+        'learn': os.getenv('LEARN_DATABASE_URL', 'postgresql+psycopg2://postgres:password@localhost:5432/practicando_learn'),
+        'dev': os.getenv('DEV_DATABASE_URL', 'sqlite:///./dev_app.db'),
+        'staging': os.getenv('STAGING_DATABASE_URL'),
+        'production': os.getenv('PRODUCTION_DATABASE_URL'),
+    }
+
 # ---- build URL from env or EB's RDS_* ----
 def _db_url() -> str:
-    # First check for explicit DATABASE_URL
-    url = os.getenv("DATABASE_URL") or os.getenv("TEST_DATABASE_URL")
+    # Priority: Direct DATABASE_URL > Mode-based config > RDS/EB config
+    url = os.getenv("DATABASE_URL")
     if url:
+        print(f"🗄️  Using direct DATABASE_URL: {url}")
+        return url
+    
+    # Use mode-based configuration from environment
+    db_configs = _get_db_configs()
+    url = db_configs.get(DB_MODE)
+    
+    if url:
+        print(f"🗄️  Database mode: {DB_MODE} -> {url}")
         return url
     
     # Then try to build from RDS_* environment variables
@@ -31,15 +53,19 @@ def _db_url() -> str:
             raise RuntimeError(f"Missing required RDS environment variables: {', '.join(missing_vars)}")
         
         # Build the connection string from RDS variables
-        return (
+        url = (
             f"postgresql+psycopg2://"
             f"{os.environ['RDS_USERNAME']}:{os.environ['RDS_PASSWORD']}"
             f"@{os.environ['RDS_HOSTNAME']}:{os.environ['RDS_PORT']}"
             f"/{os.environ['RDS_DB_NAME']}"
         )
+        print(f"🗄️  Using RDS configuration: {url}")
+        return url
     
-    # If no valid connection info found
-    raise RuntimeError("Set DATABASE_URL/TEST_DATABASE_URL or provide RDS_* vars.")
+    # If no valid connection info found, fall back to local SQLite
+    fallback_url = 'sqlite:///./app.db'
+    print(f"⚠️  No database configuration found for mode '{DB_MODE}', using fallback: {fallback_url}")
+    return fallback_url
 
 _engine = None
 _Session = None

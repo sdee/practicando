@@ -289,8 +289,15 @@ async def get_practice_activity(
         
     else:  # rounds
         # Count completed rounds (rounds with ended_at set)
+        # Use database-specific date formatting
+        if period == "week":
+            # For week view, group by day
+            date_format = get_date_format_func(db, Round.ended_at, '%Y-%m-%d')
+        else:  # month view, group by month
+            date_format = get_date_format_func(db, Round.ended_at, '%Y-%m')
+            
         query = db.query(
-            func.date_trunc(trunc_format if period == "week" else "day", Round.ended_at).label('period_date'),
+            date_format.label('period_date'),
             func.count(Round.id).label('count')
         )
         
@@ -306,7 +313,7 @@ async def get_practice_activity(
             Round.ended_at < overall_end
         )
         
-        query = query.group_by(func.date_trunc(trunc_format if period == "week" else "day", Round.ended_at))
+        query = query.group_by(date_format)
     
     # Execute query
     results = query.all()
@@ -314,19 +321,13 @@ async def get_practice_activity(
     # Convert results to lookup dictionary
     data_by_date = {}
     if period == "week":
-        # For daily data, key by date string
+        # For week (daily) data, the period_date is already in YYYY-MM-DD format
         for row in results:
-            date_key = row.period_date.strftime("%Y-%m-%d")
-            data_by_date[date_key] = row.count
+            data_by_date[row.period_date] = row.count
     else:
-        # For weekly/monthly data, we need to match periods to data points
+        # For month data, the period_date is in YYYY-MM format
         for row in results:
-            row_date = row.period_date.replace(hour=0, minute=0, second=0, microsecond=0)
-            # Find which period this data point belongs to
-            for p in periods:
-                if p['start'] <= row_date < p['end']:
-                    data_by_date[p['date']] = data_by_date.get(p['date'], 0) + row.count
-                    break
+            data_by_date[row.period_date] = row.count
     
     # Build complete time series with zeros
     data_points = []
