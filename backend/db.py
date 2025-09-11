@@ -22,7 +22,7 @@ def _get_db_configs():
     return {
         'test': os.getenv('TEST_DATABASE_URL', 'sqlite:///./test_app.db'),
         'learn': os.getenv('LEARN_DATABASE_URL', 'postgresql+psycopg2://postgres:password@localhost:5432/practicando_learn'),
-        'dev': os.getenv('DEV_DATABASE_URL', 'sqlite:///./dev_app.db'),
+        'dev': os.getenv('DEV_DATABASE_URL', 'postgresql+psycopg2://postgres:password@localhost:5432/practicando_dev'),
         'staging': os.getenv('STAGING_DATABASE_URL'),
         'production': os.getenv('PRODUCTION_DATABASE_URL'),
     }

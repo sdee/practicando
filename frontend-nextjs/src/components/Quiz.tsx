@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Question, AnswerState, Round, Guess, GamePhase, RoundState, Filters, DEFAULT_NUM_QUESTIONS, QUESTION_COUNT_OPTIONS } from '@/types/flashcard';
-import { createRound, transitionRound, completeRound, getActiveRound, submitGuess } from '@/services/api';
+import { createRound, transitionRound, completeRound, getActiveRound, submitGuess, submitSkip } from '@/services/api';
 import { setAppState } from '@/lib/appState';
 import { VerbSetModal } from './VerbSetModal';
 
@@ -380,9 +380,10 @@ interface FlashcardProps {
   onNext: () => void;
   state: AnswerState;
   allowRetry: boolean;
+  onSkip: () => void;
 }
 
-function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, state, allowRetry }: FlashcardProps) {
+function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, state, allowRetry, onSkip }: FlashcardProps) {
   const [userAnswer, setUserAnswer] = useState('');
   const [showAnswer, setShowAnswer] = useState(false);
   const [animationClass, setAnimationClass] = useState('');
@@ -438,8 +439,23 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!showAnswer) return;
-
+      const target = e.target as HTMLElement | null;
+      const isTyping = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+      // Global skip: Cmd+Space (mac) or Ctrl+Space (win/linux), even when typing
+      if (!showAnswer && ((e.metaKey || e.ctrlKey) && (e.key === ' ' || e.code === 'Space'))) {
+        e.preventDefault();
+        onSkip();
+        return;
+      }
+      if (!showAnswer) {
+        // Skip with Space when not focused in input
+        if (!isTyping && (e.key === ' ' || e.code === 'Space')) {
+          e.preventDefault();
+          onSkip();
+        }
+        return;
+      }
+      // Navigation after showing answer
       switch (e.key.toLowerCase()) {
         case 'n':
         case 'arrowright':
@@ -512,6 +528,13 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
               className="w-full bg-orange-400 text-white py-3 px-4 rounded-xl hover:bg-orange-500 disabled:bg-orange-200 disabled:cursor-not-allowed font-semibold text-lg transition-colors"
             >
               {hasRetried ? 'Submit Final Answer' : 'Submit Answer'}
+            </button>
+            <button
+              type="button"
+              onClick={onSkip}
+              className="w-full bg-slate-300 text-slate-800 py-2.5 px-4 rounded-xl hover:bg-slate-400 font-medium text-base transition-colors"
+            >
+              Skip (Cmd+Space)
             </button>
             {allowRetry && (
               <div className="text-center text-xs mt-1">
@@ -1104,6 +1127,28 @@ export default function FlashcardGame() {
               onNext={handleNext}
               state={answerState}
               allowRetry={!!filters.allow_retry}
+              onSkip={() => {
+                // Mark current guess as skipped without recording an answer and move on
+                setAnswerState('unanswered');
+                setRoundState(prev => {
+                  const isLast = prev.currentGuessIndex >= prev.guesses.length - 1;
+                  const current = prev.guesses[prev.currentGuessIndex];
+                  if (current?.id) {
+                    submitSkip(current.id).catch(() => {});
+                  }
+                  if (isLast) {
+                    // Finish the round on skip of final question
+                    setTimeout(() => {
+                      setGamePhase('round_complete');
+                    }, 300);
+                    if (prev.currentRound) {
+                      completeRound(prev.currentRound.id).catch(console.error);
+                    }
+                    return { ...prev, isComplete: true };
+                  }
+                  return { ...prev, currentGuessIndex: prev.currentGuessIndex + 1 };
+                });
+              }}
             />
           </div>
         </div>

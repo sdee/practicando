@@ -187,3 +187,23 @@ export const getVerbSet = async (verbClass: string): Promise<VerbSet> => {
   
   return response.json();
 };
+
+export async function submitSkip(guessId: number): Promise<void> {
+  try {
+    const response = await fetch(`/api/rounds/guesses/${guessId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        guess_id: guessId,
+        skipped: true,
+      }),
+    });
+    if (!response.ok) {
+      console.error(`Failed to mark guess as skipped: ${response.status}`);
+    }
+  } catch (error) {
+    console.error('Error marking guess as skipped:', error);
+  }
+}

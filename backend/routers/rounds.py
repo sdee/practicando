@@ -29,8 +29,9 @@ class TransitionResponse(BaseModel):
 
 class SubmitGuessRequest(BaseModel):
     guess_id: int = Field(description="ID of the guess to update")
-    user_answer: str = Field(description="User's submitted answer")
-    is_correct: bool = Field(description="Whether the answer is correct")
+    user_answer: Optional[str] = Field(default=None, description="User's submitted answer (omit for skip)")
+    is_correct: Optional[bool] = Field(default=None, description="Whether the answer is correct (omit for skip)")
+    skipped: Optional[bool] = Field(default=None, description="Mark the guess as skipped")
 
 class GuessResponse(BaseModel):
     guess: dict
@@ -181,6 +182,7 @@ def get_rounds_history(
                         "user_answer": guess.user_answer,
                         "correct_answer": guess.correct_answer,
                         "is_correct": guess.is_correct,
+                        "skipped": guess.skipped,
                         "created_at": guess.created_at
                     }
                     questions.append(question_data)
@@ -259,12 +261,34 @@ def submit_guess(
         # Create round service
         round_service = create_round_service(question_service, db)
         
-        # Update the guess
-        updated_guess = round_service.update_guess(
-            guess_id=guess_id,
-            user_answer=request.user_answer,
-            is_correct=request.is_correct
-        )
+        # Handle skip explicitly
+        if request.skipped:
+            guess = db.query(Guess).filter(Guess.id == guess_id).first()
+            if not guess:
+                raise ValueError(f"Guess with id {guess_id} not found")
+            guess.user_answer = None
+            guess.is_correct = None
+            guess.skipped = True
+            db.commit()
+            db.refresh(guess)
+            updated_guess = {
+                'id': guess.id,
+                'verb': guess.verb.infinitive if guess.verb else "unknown",
+                'pronoun': guess.pronoun,
+                'tense': guess.tense,
+                'mood': guess.mood,
+                'correct_answer': guess.correct_answer,
+                'user_answer': guess.user_answer,
+                'is_correct': guess.is_correct,
+                'skipped': guess.skipped,
+            }
+        else:
+            # Update the guess with provided answer
+            updated_guess = round_service.update_guess(
+                guess_id=guess_id,
+                user_answer=request.user_answer or "",
+                is_correct=bool(request.is_correct)
+            )
         
         return {"guess": updated_guess}
         

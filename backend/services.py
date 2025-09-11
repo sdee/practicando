@@ -274,7 +274,8 @@ class RoundService:
                     "mood": guess.mood,
                     "correct_answer": guess.correct_answer,
                     "user_answer": guess.user_answer,
-                    "is_correct": guess.is_correct
+                    "is_correct": guess.is_correct,
+                    "skipped": guess.skipped
                 }
                 for guess, question in zip(guesses, questions)
             ]
@@ -341,6 +342,7 @@ class RoundService:
         # Update the guess
         guess.user_answer = user_answer
         guess.is_correct = is_correct
+        guess.skipped = False
         self.db.commit()
         self.db.refresh(guess)
         
@@ -353,7 +355,8 @@ class RoundService:
             'mood': guess.mood,
             'correct_answer': guess.correct_answer,
             'user_answer': guess.user_answer,
-            'is_correct': guess.is_correct
+            'is_correct': guess.is_correct,
+            'skipped': guess.skipped
         }
     
     def transition_to_new_round(
