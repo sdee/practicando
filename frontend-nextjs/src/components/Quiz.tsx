@@ -335,6 +335,20 @@ function FilterPanel({ isOpen, onToggle, filters, onFiltersChange, onApply, hasA
               ))}
             </div>
           </div>
+
+          {/* Allow Retry */}
+          <div className="mt-4">
+            <h4 className="text-sm font-medium text-slate-700 mb-3">Answer Behavior</h4>
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!!filters.allow_retry}
+                onChange={(e) => onFiltersChange({ ...filters, allow_retry: e.target.checked })}
+                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm text-slate-600">Allow one retry on incorrect answer</span>
+            </label>
+          </div>
           
           <div className="mt-6 flex justify-end">
             <button
@@ -365,18 +379,23 @@ interface FlashcardProps {
   onAnswer: (correct: boolean, userAnswer: string) => void;
   onNext: () => void;
   state: AnswerState;
+  allowRetry: boolean;
 }
 
-function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, state }: FlashcardProps) {
+function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, state, allowRetry }: FlashcardProps) {
   const [userAnswer, setUserAnswer] = useState('');
   const [showAnswer, setShowAnswer] = useState(false);
   const [animationClass, setAnimationClass] = useState('');
+  const [hasRetried, setHasRetried] = useState(false);
+  const [previousGuess, setPreviousGuess] = useState<string | null>(null);
 
   // Reset state when question changes
   useEffect(() => {
     setUserAnswer(guess.user_answer || '');
     setShowAnswer(guess.user_answer !== undefined && guess.user_answer !== null);
     setAnimationClass(''); // Clear any animation when question changes
+    setHasRetried(false);
+    setPreviousGuess(null);
   }, [guess.id]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -384,20 +403,26 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
     if (!userAnswer.trim()) return;
 
     const isCorrect = userAnswer.toLowerCase().trim() === guess.correct_answer.toLowerCase();
-    setShowAnswer(true);
     
-    // Trigger animation based on correctness
+    // If incorrect and retry is allowed and not yet used, allow one retry without revealing
+    if (!isCorrect && allowRetry && !hasRetried) {
+      setPreviousGuess(userAnswer);
+      setUserAnswer('');
+      setHasRetried(true);
+      setAnimationClass('animate-enhanced-shake');
+      setTimeout(() => setAnimationClass(''), 1200);
+      return; // Do not reveal or submit yet
+    }
+
+    // Finalize (either correct, or incorrect with no retry left)
+    setShowAnswer(true);
     if (isCorrect) {
       setAnimationClass('animate-triple-bounce');
     } else {
       setAnimationClass('animate-enhanced-shake');
     }
-    
-    // Clear animation after it completes
-    setTimeout(() => {
-      setAnimationClass('');
-    }, 1200); // Longer duration for our custom animations
-    
+    setTimeout(() => setAnimationClass(''), 1200);
+
     onAnswer(isCorrect, userAnswer);
   };
 
@@ -458,6 +483,12 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
           <span className="px-4 py-1.5 bg-yellow-500 text-white rounded-full font-medium text-sm">{guess.tense}</span>
           <span className="px-4 py-1.5 bg-indigo-900 text-white rounded-full font-medium text-sm">{guess.mood}</span>
         </div>
+        {allowRetry && previousGuess && !showAnswer && hasRetried && (
+          <div className="mt-2 text-sm">
+            <span className="text-slate-600">Previous guess: </span>
+            <span className="font-semibold text-slate-800">{previousGuess}</span>
+          </div>
+        )}
       </div>
 
       {/* Card Content */}
@@ -474,13 +505,23 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
                 autoFocus
               />
             </div>
+            {/* Previous guess moved to header under chips */}
             <button
               type="submit"
               disabled={!userAnswer.trim()}
               className="w-full bg-orange-400 text-white py-3 px-4 rounded-xl hover:bg-orange-500 disabled:bg-orange-200 disabled:cursor-not-allowed font-semibold text-lg transition-colors"
             >
-              Submit Answer
+              {hasRetried ? 'Submit Final Answer' : 'Submit Answer'}
             </button>
+            {allowRetry && (
+              <div className="text-center text-xs mt-1">
+                {hasRetried ? (
+                  <span className="text-rose-600 font-medium">Incorrect. You have 1 retry left.</span>
+                ) : (
+                  <span className="text-slate-500">One retry allowed on incorrect answer</span>
+                )}
+              </div>
+            )}
           </form>
         )}
 
@@ -672,7 +713,8 @@ export default function FlashcardGame() {
     pronouns: ['yo', 'tu'],
     tenses: ['present'],
     moods: ['indicative'],
-    num_questions: DEFAULT_NUM_QUESTIONS
+    num_questions: DEFAULT_NUM_QUESTIONS,
+    allow_retry: false
   });
 
   // Initialize app - check for active round or create new one
@@ -1061,6 +1103,7 @@ export default function FlashcardGame() {
               onAnswer={handleAnswer}
               onNext={handleNext}
               state={answerState}
+              allowRetry={!!filters.allow_retry}
             />
           </div>
         </div>

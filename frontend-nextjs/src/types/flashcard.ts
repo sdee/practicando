@@ -33,6 +33,7 @@ export interface Filters {
   moods: string[];
   num_questions?: number;
   verb_class?: string; // New: for verb set filtering (top10, top20, etc.)
+  allow_retry?: boolean; // New: enable a single retry per question
 }
 
 // Round-related types
