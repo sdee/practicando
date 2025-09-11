@@ -441,18 +441,14 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const isTyping = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
-      // Global skip: Cmd+Space (mac) or Ctrl+Space (win/linux), even when typing
-      if (!showAnswer && ((e.metaKey || e.ctrlKey) && (e.key === ' ' || e.code === 'Space'))) {
-        e.preventDefault();
-        onSkip();
-        return;
-      }
+      // Skip with Escape (avoids conflicts with OS/browser shortcuts)
       if (!showAnswer) {
-        // Skip with Space when not focused in input
-        if (!isTyping && (e.key === ' ' || e.code === 'Space')) {
+        if (e.key === 'Escape') {
           e.preventDefault();
           onSkip();
+          return;
         }
+        // Do not consume other keys before answer is shown
         return;
       }
       // Navigation after showing answer
@@ -533,8 +529,9 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
               type="button"
               onClick={onSkip}
               className="w-full bg-slate-300 text-slate-800 py-2.5 px-4 rounded-xl hover:bg-slate-400 font-medium text-base transition-colors"
+              aria-keyshortcuts="Esc"
             >
-              Skip (Cmd+Space)
+              Skip (Esc)
             </button>
             {allowRetry && (
               <div className="text-center text-xs mt-1">
