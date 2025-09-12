@@ -4,6 +4,7 @@ import csv
 from pathlib import Path
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
+from spanishconjugator import Conjugator  # Add this import (adjust module name if needed)
 
 def validate_enum_value(enum_class, value):
     """
@@ -62,6 +63,7 @@ INDICATIVE_PRONOUN_KEY_MAP = {
 CONJUGATION_CORRECTIONS = {
     # Key: (verb, tense, mood, pronoun) -> corrected_form
     ('poner', 'present', 'indicative', 'yo'): 'pongo',
+    ('poder', 'future', 'indicative', 'yo'): 'podré'
     # Add more corrections here as they are discovered:
     # ('verb', 'tense', 'mood', 'pronoun'): 'correct_form',
 }
@@ -213,3 +215,32 @@ def populate_verbs_from_tubelex(session, file_path: str) -> Dict[str, int]:
         raise Exception(f"Error saving TubeLex data to database: {str(e)}")
     
     return stats
+
+
+def is_verb_regular_for_tense(verb: str, tense: str, pronoun: str, mood: str, answer: str, conjugator: Conjugator):
+    base_verbs = {'ar': 'hablar', 'er': 'comer', 'ir': 'vivir'}
+    conjugator: Conjugator
+
+    ending = verb[-2:]
+    base = base_verbs[ending]
+
+    normalized_pronoun = normalize_pronoun(pronoun, mood)
+    conjugation_response = conjugator.conjugate(base, tense, mood, normalized_pronoun)
+    conjugated_base = extract_conjugation_from_response(conjugation_response, normalized_pronoun, mood, base, tense)
+
+    if base in conjugated_base: # cases where entire infinitive is used
+        base_stem = base
+        stem = verb
+    else:
+        base_stem = base[:-2]
+        stem = verb[:-2]
+    
+    regular_ending = conjugated_base.removeprefix(base_stem)
+    regular_conjugation = stem+regular_ending
+    
+    conjugation_response = conjugator.conjugate(verb, tense, mood, normalized_pronoun)
+    conjugated_verb = extract_conjugation_from_response(conjugation_response, normalized_pronoun, mood, verb, tense)
+    print("REGULAR", regular_conjugation)
+    print("CONJUGATED VERB", conjugated_verb)
+    print(conjugated_verb == regular_conjugation) 
+    return conjugated_verb == regular_conjugation
