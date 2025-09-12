@@ -78,6 +78,7 @@ class Guess(Base):
     correct_answer = Column(String(100), nullable=False)
     is_correct = Column(Boolean, nullable=True)
     skipped = Column(Boolean, nullable=True)
+    irregular = Column(Boolean, nullable=True, default=None)
     
     created_at = Column(DateTime, default=func.now())
     

@@ -10,7 +10,7 @@ from sqlalchemy import func
 import random
 import re
 
-from utils import normalize_pronoun, extract_conjugation_from_response
+from utils import normalize_pronoun, extract_conjugation_from_response, is_verb_regular_for_tense
 from models import Round, Guess, Verb
 
 
@@ -82,7 +82,7 @@ class QuestionService:
             verb_class: Verb class string (e.g., "top10", "top50")
             
         Returns:
-            List of question dictionaries with pronoun, tense, mood, verb, and answer
+            List of question dictionaries with pronoun, tense, mood, verb, answer, and irregular flag
             
         Raises:
             ValueError: If verb_class is invalid or no verbs found
@@ -130,7 +130,15 @@ class QuestionService:
                     'tense': tense_choice,
                     'mood': mood_choice, 
                     'verb': verb_choice,
-                    'answer': answer
+                    'answer': answer,
+                    'irregular': not is_verb_regular_for_tense(
+                        verb=verb_choice,
+                        tense=tense_choice,
+                        pronoun=pronoun_choice,
+                        mood=mood_choice,
+                        answer=answer,
+                        conjugator=self.conjugator
+                    )
                 })
         
         return questions
@@ -275,7 +283,8 @@ class RoundService:
                     "correct_answer": guess.correct_answer,
                     "user_answer": guess.user_answer,
                     "is_correct": guess.is_correct,
-                    "skipped": guess.skipped
+                    "skipped": guess.skipped,
+                    "irregular": guess.irregular
                 }
                 for guess, question in zip(guesses, questions)
             ]
@@ -356,7 +365,8 @@ class RoundService:
             'correct_answer': guess.correct_answer,
             'user_answer': guess.user_answer,
             'is_correct': guess.is_correct,
-            'skipped': guess.skipped
+            'skipped': guess.skipped,
+            'irregular': guess.irregular
         }
     
     def transition_to_new_round(
@@ -441,7 +451,8 @@ class RoundService:
                     "mood": guess.mood,
                     "correct_answer": guess.correct_answer,
                     "user_answer": guess.user_answer,
-                    "is_correct": guess.is_correct
+                    "is_correct": guess.is_correct,
+                    "irregular": guess.irregular
                 }
                 for guess in guesses
             ]
@@ -484,7 +495,8 @@ class RoundService:
                     "mood": guess.mood,
                     "correct_answer": guess.correct_answer,
                     "user_answer": guess.user_answer,
-                    "is_correct": guess.is_correct
+                    "is_correct": guess.is_correct,
+                    "irregular": guess.irregular
                 }
                 for guess in guesses
             ]
@@ -528,6 +540,16 @@ class RoundService:
                     )
                 
                 if correct_answer and len(correct_answer.strip()) > 0:
+                    # Calculate irregularity
+                    irregular = not is_verb_regular_for_tense(
+                        verb=question['verb'],
+                        tense=question['tense'],
+                        pronoun=question['pronoun'],
+                        mood=question['mood'],
+                        answer=correct_answer,
+                        conjugator=self.question_service.conjugator
+                    )
+
                     guess = Guess(
                         round_id=round_id,
                         user_id=user_id,
@@ -538,6 +560,8 @@ class RoundService:
                         correct_answer=correct_answer,
                         user_answer=None,
                         is_correct=None,
+                        skipped=False,
+                        irregular=irregular,
                         created_at=func.now()
                     )
                     self.db.add(guess)

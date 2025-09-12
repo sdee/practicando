@@ -4,6 +4,7 @@ from typing import Optional, List
 from pydantic import BaseModel, Field, validator, ValidationError
 from db import get_db
 from spanishconjugator import Conjugator
+from utils import is_verb_regular_for_tense
 
 # Import from dependencies instead of main to avoid circular imports
 from dependencies import get_conjugator, get_question_service
@@ -104,6 +105,17 @@ def get_questions(
                 "message": str(e)
             }
         )
+
+    # # Add irregular boolean to each question
+    # for question in questions:
+    #     question['irregular'] = not is_verb_regular_for_tense(
+    #         verb=question['verb'],
+    #         tense=question['tense'],
+    #         pronoun=question['pronoun'],
+    #         mood=question['mood'],
+    #         answer=question['answer'],
+    #         conjugator=question_service.conjugator
+    #     )
     
     return {
         "questions": questions

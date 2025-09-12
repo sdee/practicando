@@ -183,6 +183,7 @@ def get_rounds_history(
                         "correct_answer": guess.correct_answer,
                         "is_correct": guess.is_correct,
                         "skipped": guess.skipped,
+                        "irregular": guess.irregular,
                         "created_at": guess.created_at
                     }
                     questions.append(question_data)
@@ -280,7 +281,8 @@ def submit_guess(
                 'correct_answer': guess.correct_answer,
                 'user_answer': guess.user_answer,
                 'is_correct': guess.is_correct,
-                'skipped': guess.skipped,
+                    'skipped': guess.skipped,
+                    'irregular': guess.irregular,
             }
         else:
             # Update the guess with provided answer
