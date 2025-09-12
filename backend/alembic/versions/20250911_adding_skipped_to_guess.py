@@ -12,7 +12,6 @@ import sqlalchemy as sa
 revision = 'add_skipped_to_guesses_20250911'
 down_revision = '6fcd840b7647'
 branch_labels = None
-depends_on = ('611307de519f',)
 
 
 def upgrade() -> None:
