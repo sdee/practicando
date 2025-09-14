@@ -60,6 +60,9 @@ export interface Guess {
   correct_answer: string;
   user_answer?: string;
   is_correct?: boolean;
+  // Whether this guess is irregular for the given pronoun/tense/mood.
+  // Nullable to support legacy data where irregularity wasn't computed.
+  irregular?: boolean | null;
 }
 
 export interface RoundState {

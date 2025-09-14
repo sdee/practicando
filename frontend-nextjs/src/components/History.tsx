@@ -25,6 +25,8 @@ interface HistoryQuestion {
   correct_answer: string;
   is_correct: boolean;
   created_at: string;
+  skipped?: boolean;
+  irregular?: boolean | null;
 }
 
 interface HistoryResponse {

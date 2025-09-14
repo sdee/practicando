@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Question, AnswerState, Round, Guess, GamePhase, RoundState, Filters, DEFAULT_NUM_QUESTIONS, QUESTION_COUNT_OPTIONS } from '@/types/flashcard';
 import { createRound, transitionRound, completeRound, getActiveRound, submitGuess, submitSkip } from '@/services/api';
 import { setAppState } from '@/lib/appState';
+import { getOverlapHighlight } from '@/lib/text';
 import { VerbSetModal } from './VerbSetModal';
 
 interface PronounOption {
@@ -390,6 +391,13 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
   const [hasRetried, setHasRetried] = useState(false);
   const [previousGuess, setPreviousGuess] = useState<string | null>(null);
 
+  // Compute overlap for regular verbs when incorrect using util
+  const overlap = useMemo(() => {
+    if (state !== 'incorrect') return null;
+    if (guess.irregular !== false) return null; // Only for regular verbs
+    return getOverlapHighlight(guess.correct_answer, userAnswer, 3);
+  }, [state, guess.irregular, guess.correct_answer, userAnswer]);
+
   // Reset state when question changes
   useEffect(() => {
     setUserAnswer(guess.user_answer || '');
@@ -564,9 +572,14 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
               {state === 'incorrect' && (
                 <div className="w-full px-4 py-3 border-2 border-transparent rounded-xl text-center font-medium bg-white text-lg">
                   <span className="text-slate-600 text-base">Correct answer: </span>
-                  <span className="text-emerald-600 font-semibold">
-                    {guess.correct_answer}
-                  </span>
+                  {overlap ? (
+                    <span className="font-semibold">
+                      <span className="text-slate-900">{overlap.prefix}</span>
+                      <span className="text-rose-600">{overlap.remainder}</span>
+                    </span>
+                  ) : (
+                    <span className="text-emerald-600 font-semibold">{guess.correct_answer}</span>
+                  )}
                 </div>
               )}
             </div>
