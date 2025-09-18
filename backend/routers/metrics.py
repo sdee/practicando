@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, text
+from sqlalchemy import func, text, Integer, String
+
+
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from pydantic import BaseModel
@@ -259,17 +261,26 @@ async def get_practice_activity(
     # Query data based on metric type
     if metric == "questions":
         # Count answered questions only (guesses with user_answer)
-        # Use database-specific date formatting
         if period == "week":
             # For week view, group by day
             date_format = get_date_format_func(db, Guess.created_at, '%Y-%m-%d')
-        else:  # month view, group by month
-            date_format = get_date_format_func(db, Guess.created_at, '%Y-%m')
+            query = db.query(
+                date_format.label('period_date'),
+                func.count(Guess.id).label('count')
+            )
+        else:  # month view - group by week start (Monday)
+            # For monthly view, group by the Monday of each week
+            if db.bind.dialect.name == 'postgresql':
+                week_start = func.date_trunc('week', Guess.created_at)
+                date_format = func.to_char(week_start, 'YYYY-MM-DD')
+            else:
+                # SQLite: Use a simpler approach - just group by day for now
+                date_format = get_date_format_func(db, Guess.created_at, '%Y-%m-%d')
             
-        query = db.query(
-            date_format.label('period_date'),
-            func.count(Guess.id).label('count')
-        )
+            query = db.query(
+                date_format.label('period_date'),
+                func.count(Guess.id).label('count')
+            )
         
         # Only count answered questions (where user_answer is not null)
         query = query.filter(Guess.user_answer.isnot(None))
@@ -286,20 +297,29 @@ async def get_practice_activity(
         )
         
         query = query.group_by(date_format)
-        
+
     else:  # rounds
         # Count completed rounds (rounds with ended_at set)
-        # Use database-specific date formatting
         if period == "week":
             # For week view, group by day
             date_format = get_date_format_func(db, Round.ended_at, '%Y-%m-%d')
-        else:  # month view, group by month
-            date_format = get_date_format_func(db, Round.ended_at, '%Y-%m')
+            query = db.query(
+                date_format.label('period_date'),
+                func.count(Round.id).label('count')
+            )
+        else:  # month view - group by week start (Monday)
+            # For monthly view, group by the Monday of each week
+            if db.bind.dialect.name == 'postgresql':
+                week_start = func.date_trunc('week', Round.ended_at)
+                date_format = func.to_char(week_start, 'YYYY-MM-DD')
+            else:
+                # SQLite: Use a simpler approach - just group by day for now
+                date_format = get_date_format_func(db, Round.ended_at, '%Y-%m-%d')
             
-        query = db.query(
-            date_format.label('period_date'),
-            func.count(Round.id).label('count')
-        )
+            query = db.query(
+                date_format.label('period_date'),
+                func.count(Round.id).label('count')
+            )
         
         if user_id:
             query = query.filter(Round.user_id == user_id)
@@ -320,14 +340,9 @@ async def get_practice_activity(
     
     # Convert results to lookup dictionary
     data_by_date = {}
-    if period == "week":
-        # For week (daily) data, the period_date is already in YYYY-MM-DD format
-        for row in results:
-            data_by_date[row.period_date] = row.count
-    else:
-        # For month data, the period_date is in YYYY-MM format
-        for row in results:
-            data_by_date[row.period_date] = row.count
+    # Both week and month periods now use YYYY-MM-DD format
+    for row in results:
+        data_by_date[row.period_date] = row.count
     
     # Build complete time series with zeros
     data_points = []
