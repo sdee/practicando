@@ -10,8 +10,8 @@ from sqlalchemy import func
 import random
 import re
 
-from utils import normalize_pronoun, extract_conjugation_from_response, is_verb_regular_for_tense
-from models import Round, Guess, Verb
+from utils import normalize_pronoun, extract_conjugation_from_response
+from models import Round, Guess, TenseEnum, Verb
 
 
 class QuestionService:
@@ -82,7 +82,7 @@ class QuestionService:
             verb_class: Verb class string (e.g., "top10", "top50")
             
         Returns:
-            List of question dictionaries with pronoun, tense, mood, verb, answer, and irregular flag
+            List of question dictionaries with pronoun, tense, mood, verb, and answer
             
         Raises:
             ValueError: If verb_class is invalid or no verbs found
@@ -130,15 +130,7 @@ class QuestionService:
                     'tense': tense_choice,
                     'mood': mood_choice, 
                     'verb': verb_choice,
-                    'answer': answer,
-                    'irregular': not is_verb_regular_for_tense(
-                        verb=verb_choice,
-                        tense=tense_choice,
-                        pronoun=pronoun_choice,
-                        mood=mood_choice,
-                        answer=answer,
-                        conjugator=self.conjugator
-                    )
+                    'answer': answer
                 })
         
         return questions
@@ -282,9 +274,7 @@ class RoundService:
                     "mood": guess.mood,
                     "correct_answer": guess.correct_answer,
                     "user_answer": guess.user_answer,
-                    "is_correct": guess.is_correct,
-                    "skipped": guess.skipped,
-                    "irregular": guess.irregular
+                    "is_correct": guess.is_correct
                 }
                 for guess, question in zip(guesses, questions)
             ]
@@ -351,7 +341,6 @@ class RoundService:
         # Update the guess
         guess.user_answer = user_answer
         guess.is_correct = is_correct
-        guess.skipped = False
         self.db.commit()
         self.db.refresh(guess)
         
@@ -364,9 +353,7 @@ class RoundService:
             'mood': guess.mood,
             'correct_answer': guess.correct_answer,
             'user_answer': guess.user_answer,
-            'is_correct': guess.is_correct,
-            'skipped': guess.skipped,
-            'irregular': guess.irregular
+            'is_correct': guess.is_correct
         }
     
     def transition_to_new_round(
@@ -451,8 +438,7 @@ class RoundService:
                     "mood": guess.mood,
                     "correct_answer": guess.correct_answer,
                     "user_answer": guess.user_answer,
-                    "is_correct": guess.is_correct,
-                    "irregular": guess.irregular
+                    "is_correct": guess.is_correct
                 }
                 for guess in guesses
             ]
@@ -495,8 +481,7 @@ class RoundService:
                     "mood": guess.mood,
                     "correct_answer": guess.correct_answer,
                     "user_answer": guess.user_answer,
-                    "is_correct": guess.is_correct,
-                    "irregular": guess.irregular
+                    "is_correct": guess.is_correct
                 }
                 for guess in guesses
             ]
@@ -540,16 +525,6 @@ class RoundService:
                     )
                 
                 if correct_answer and len(correct_answer.strip()) > 0:
-                    # Calculate irregularity
-                    irregular = not is_verb_regular_for_tense(
-                        verb=question['verb'],
-                        tense=question['tense'],
-                        pronoun=question['pronoun'],
-                        mood=question['mood'],
-                        answer=correct_answer,
-                        conjugator=self.question_service.conjugator
-                    )
-
                     guess = Guess(
                         round_id=round_id,
                         user_id=user_id,
@@ -560,8 +535,6 @@ class RoundService:
                         correct_answer=correct_answer,
                         user_answer=None,
                         is_correct=None,
-                        skipped=False,
-                        irregular=irregular,
                         created_at=func.now()
                     )
                     self.db.add(guess)
@@ -581,6 +554,22 @@ class RoundService:
         print(f"Failed to create guess for {question} after {max_retries} attempts")
         return None
 
+class VerbService:
+    """Service for managing verbs"""
+    
+    def __init__(self, conjugator: Conjugator, db: Session):
+        self.db = db
+        self.conjugator = conjugator
+
+    def get_conjugations(self, verb: str) -> Dict[str, str]:
+        conjugations = {}
+        mood = "indicative"
+        for tense in TenseEnum:
+            for pronoun in ['yo', 'tu', 'el', 'nosotros', 'ellos']:
+                normalized_pronoun = normalize_pronoun(pronoun, mood)
+                conjugation_response = self.conjugator.conjugate(verb, tense.value, mood, normalized_pronoun)
+                conjugations[f"{tense.value}_{pronoun}"] = extract_conjugation_from_response(conjugation_response, pronoun, mood, verb, tense.value)
+        return conjugations
 
 # Convenience functions for dependency injection
 def create_question_service(conjugator: Conjugator, db: Session) -> QuestionService:
@@ -590,3 +579,7 @@ def create_question_service(conjugator: Conjugator, db: Session) -> QuestionServ
 def create_round_service(question_service: QuestionService, db: Session) -> RoundService:
     """Factory function to create a RoundService instance"""
     return RoundService(question_service, db)
+
+def create_verb_service(conjugator: Conjugator, db: Session) -> VerbService:
+    """Factory function to create a VerbService instance"""
+    return VerbService(conjugator, db)

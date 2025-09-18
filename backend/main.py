@@ -16,7 +16,7 @@ from spanishconjugator import Conjugator
 from dependencies import set_conjugator
 
 # Import routers
-from routers import questions, rounds, metrics
+from routers import questions, rounds, metrics, verbs
 
 app = FastAPI()
 
@@ -44,7 +44,7 @@ app.add_middleware(
 app.include_router(questions.router, prefix="/api/questions", tags=["questions"])
 app.include_router(rounds.router, prefix="/api", tags=["rounds"])
 app.include_router(metrics.router, prefix="/api", tags=["metrics"])
-
+app.include_router(verbs.router, prefix="/api", tags=["verbs"])
 
 class HealthResponse(BaseModel):
     status: str

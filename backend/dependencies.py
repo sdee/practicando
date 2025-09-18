@@ -1,7 +1,7 @@
 from fastapi import HTTPException, Depends
 from sqlalchemy.orm import Session
 from spanishconjugator import Conjugator
-from services import QuestionService, create_question_service
+from services import QuestionService, VerbService, create_question_service, create_verb_service
 from db import get_db
 
 def get_conjugator() -> Conjugator:
@@ -21,3 +21,10 @@ def get_question_service(
 ) -> QuestionService:
     """Get question service instance with conjugator and database dependencies"""
     return create_question_service(conjugator, db)
+
+def get_verb_service(
+    conjugator: Conjugator = Depends(get_conjugator),
+    db: Session = Depends(get_db)
+) -> VerbService:
+    """Get verb service instance with conjugator and database dependencies"""
+    return create_verb_service(conjugator, db)
