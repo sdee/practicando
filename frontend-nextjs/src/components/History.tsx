@@ -50,7 +50,7 @@ export default function History({ onBack }: HistoryProps) {
   const [selectedTense, setSelectedTense] = useState<string>('');
   const [selectedPronoun, setSelectedPronoun] = useState<string>('');
   
-  const ROUNDS_PER_PAGE = 10;
+  const ROUNDS_PER_PAGE = 25;
 
   useEffect(() => {
     fetchHistory(1);
@@ -158,7 +158,8 @@ export default function History({ onBack }: HistoryProps) {
     const groups: { [key: string]: HistoryRound[] } = {};
     
     rounds.forEach(round => {
-      const dayKey = format(new Date(round.started_at), 'yyyy-MM-dd');
+      // Use ended_at instead of started_at for consistency with metrics
+      const dayKey = format(new Date(round.ended_at), 'yyyy-MM-dd');
       if (!groups[dayKey]) {
         groups[dayKey] = [];
       }
