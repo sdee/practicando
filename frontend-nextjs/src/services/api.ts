@@ -188,6 +188,16 @@ export const getVerbSet = async (verbClass: string): Promise<VerbSet> => {
   return response.json();
 };
 
+export async function getVerbConjugations(verb: string): Promise<Record<string, string>> {
+  const response = await fetch(`/api/verbs/${verb}/conjugations`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch conjugations for ${verb}: ${response.status}`);
+  }
+  
+  return response.json();
+}
+
 export async function submitSkip(guessId: number): Promise<void> {
   try {
     const response = await fetch(`/api/rounds/guesses/${guessId}`, {

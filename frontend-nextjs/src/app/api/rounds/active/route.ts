@@ -10,6 +10,24 @@ export async function GET(request: NextRequest) {
       cache: 'no-store',
       next: { revalidate: 0 }
     });
+
+    // Check if the response is OK before trying to parse JSON
+    if (!response.ok) {
+      if (response.status === 404) {
+        return Response.json(
+          { error: 'No active round found' },
+          { status: 404 }
+        );
+      }
+      
+      const errorText = await response.text();
+      console.error(`Backend error: ${response.status} - ${errorText}`);
+      return Response.json(
+        { error: `Backend error: ${response.status} - ${errorText}` },
+        { status: response.status }
+      );
+    }
+
     const data = await response.json();
     
     return Response.json(data, {

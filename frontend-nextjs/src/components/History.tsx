@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
+import { ConjugationModal } from './ConjugationModal';
 
 interface HistoryRound {
   id: number;
@@ -44,6 +45,10 @@ export default function History({ onBack }: HistoryProps) {
   const [expandedRounds, setExpandedRounds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [showConjugationModal, setShowConjugationModal] = useState(false);
+  const [selectedVerb, setSelectedVerb] = useState<string>('');
+  const [selectedTense, setSelectedTense] = useState<string>('');
+  const [selectedPronoun, setSelectedPronoun] = useState<string>('');
   
   const ROUNDS_PER_PAGE = 10;
 
@@ -168,6 +173,13 @@ export default function History({ onBack }: HistoryProps) {
     return Math.round((round.num_correct_answers / round.num_questions) * 100);
   };
 
+  const handleConjugationClick = (verb: string, tense: string, pronoun: string) => {
+    setSelectedVerb(verb);
+    setSelectedTense(tense);
+    setSelectedPronoun(pronoun);
+    setShowConjugationModal(true);
+  };
+
   if (loading && rounds.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-200 via-purple-200 to-yellow-200 p-4">
@@ -203,7 +215,7 @@ export default function History({ onBack }: HistoryProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-200 via-purple-200 to-yellow-200 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-purple-50">
       <div className="max-w-4xl mx-auto pt-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -298,11 +310,23 @@ export default function History({ onBack }: HistoryProps) {
                                     <div className="text-slate-500 text-sm w-6">
                                       {index + 1}.
                                     </div>
-                                    <div className="font-medium">
-                                      {question.verb} ({question.pronoun})
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => handleConjugationClick(question.verb, question.tense, question.pronoun)}
+                                        className="p-1 text-slate-500 hover:text-slate-700 hover:bg-white/50 rounded-lg transition-colors flex items-center"
+                                        title="View all conjugations"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                      </button>
+                                      <div className="font-medium">
+                                        {question.verb}
+                                      </div>
                                     </div>
                                     <div className="text-slate-600 text-sm">
-                                      {question.tense} • {question.mood}
+                                      ({question.pronoun}) • {question.tense} • {question.mood}
                                     </div>
                                   </div>
                                   
@@ -374,6 +398,15 @@ export default function History({ onBack }: HistoryProps) {
           </div>
         )}
       </div>
+
+      {/* Conjugation Modal */}
+      <ConjugationModal
+        isOpen={showConjugationModal}
+        onClose={() => setShowConjugationModal(false)}
+        verb={selectedVerb}
+        highlightTense={selectedTense}
+        highlightPronoun={selectedPronoun}
+      />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { createRound, transitionRound, completeRound, getActiveRound, submitGues
 import { setAppState } from '@/lib/appState';
 import { getOverlapHighlight } from '@/lib/text';
 import { VerbSetModal } from './VerbSetModal';
+import { ConjugationModal } from './ConjugationModal';
 
 interface PronounOption {
   value: string;
@@ -390,6 +391,7 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
   const [animationClass, setAnimationClass] = useState('');
   const [hasRetried, setHasRetried] = useState(false);
   const [previousGuess, setPreviousGuess] = useState<string | null>(null);
+  const [showConjugationModal, setShowConjugationModal] = useState(false);
 
   // Compute overlap for regular verbs when incorrect using util
   const overlap = useMemo(() => {
@@ -495,8 +497,22 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
         <div className="text-sm font-medium text-slate-500 mb-2 tracking-wide uppercase">
           Question {questionNumber} of {totalQuestions}
         </div>
-        <div className="text-3xl font-bold text-slate-800 mb-4">
-          {guess.verb}
+        <div className="flex items-center justify-center mb-4">
+          <div className="text-3xl font-bold text-slate-800">
+            {guess.verb}
+          </div>
+          {showAnswer && (
+            <button
+              onClick={() => setShowConjugationModal(true)}
+              className="ml-1 p-1.5 text-slate-500 hover:text-slate-700 hover:bg-white/50 rounded-lg transition-colors flex items-center"
+              title="View all conjugations"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </button>
+          )}
         </div>
         <div className="flex justify-center space-x-3 mb-3">
           <span className="px-4 py-1.5 bg-pink-500 text-white rounded-full font-medium text-sm">{guess.pronoun}</span>
@@ -601,6 +617,15 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
           </div>
         </div>
       )}
+
+      {/* Conjugation Modal */}
+      <ConjugationModal
+        isOpen={showConjugationModal}
+        onClose={() => setShowConjugationModal(false)}
+        verb={guess.verb}
+        highlightTense={guess.tense}
+        highlightPronoun={guess.pronoun}
+      />
     </div>
   );
 }
