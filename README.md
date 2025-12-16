@@ -1,13 +1,16 @@
+`Practicando` provides a fun, customizable way to master Spanish verb conjugations. Other language learning apps repeat a limited set of flashcards while Practicando dynamically generates an unlimited number of practice questions based on the filters you set. 
 
-`Practicando` provides a fun, customizable way to master Spanish verb conjugations. Other apps use a limited set of flashcards while Practicando dynamically generates an unlimited number of practice questions based on the filters you set. 
+Practicando dynamically generates flashcards by chosing a pronoun, verb, and tenses. It provides immediate feedback of whether you answered a question correctly. If you answer wrong, it reveals the answer and gives you feedback on what mistake you made. 
 
 ## Demo
 
 https://github.com/user-attachments/assets/b6d228b5-c7a5-4ce2-a3ff-14f84b17b5fe
 
 ## Features
-
-# FastAPI + React + Postgres Template (All-in-One, AWS-Ready)
+- Infinite practice: instead of learning to the test, a limitless set of flashcards provides you with ample practice with core verb conjugation skills.
+- Customizability: Using the filters, you can customize the verbs, verb tenses, and pronouns you want to practice based on your learning goals.
+- Track progress: The metrics page and history allows you to see your progress and review areas for improvement.
+- Seamlessness: Allows you to fluidly go through flashcards without lifting your hands from the keyboard.
 
 ## Project Structure
 
@@ -22,6 +25,8 @@ https://github.com/user-attachments/assets/b6d228b5-c7a5-4ce2-a3ff-14f84b17b5fe
 - Easy local dev and AWS deployment (Elastic Beanstalk or EC2)
 
 ---
+
+# FastAPI + React + Postgres Template (All-in-One, AWS-Ready)
 
 ## Local Development
 
