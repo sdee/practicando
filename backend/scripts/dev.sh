@@ -23,18 +23,17 @@ cleanup() {
 # Set trap to cleanup on script exit
 trap cleanup SIGINT SIGTERM
 
-# Start backend in background
+# Start backend in background (run from backend directory)
 echo "🔧 Starting backend server..."
-uv run python -m uvicorn main:app --reload --port 8000 &
+(cd backend && uv run python -m uvicorn main:app --reload --port 8000) &
 BACKEND_PID=$!
 
 # Wait a moment for backend to start
 sleep 3
 
-# Start frontend in background
+# Start frontend in background (run from frontend directory)
 echo "⚛️  Starting frontend server..."
-cd ../../frontend-nextjs
-npm run dev &
+(cd frontend-nextjs && npm run dev) &
 FRONTEND_PID=$!
 
 # Wait for both processes
