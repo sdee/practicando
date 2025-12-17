@@ -11,6 +11,7 @@ https://github.com/user-attachments/assets/b6d228b5-c7a5-4ce2-a3ff-14f84b17b5fe
 - Customizability: Using the filters, you can customize the verbs, verb tenses, and pronouns you want to practice based on your learning goals.
 - Track progress: The metrics page and history allows you to see your progress and review areas for improvement.
 - Seamlessness: Allows you to fluidly go through flashcards without lifting your hands from the keyboard.
+- Flexiblity under the hood: The source for the conjugations can be swapped. Also, errors in specific verbs/tenses can be patched. 
 
 ## Screenshots
 
