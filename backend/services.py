@@ -535,6 +535,8 @@ class RoundService:
                         correct_answer=correct_answer,
                         user_answer=None,
                         is_correct=None,
+                        skipped=False,  # Explicitly set to False instead of None
+                        irregular=None,  # Keep as None (nullable in model)
                         created_at=func.now()
                     )
                     self.db.add(guess)
