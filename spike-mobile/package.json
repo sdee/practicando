@@ -1,0 +1,28 @@
+{
+  "name": "practicando-spike-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Throwaway spike: mobile PWA + swipe interactions for Spanish conjugation flashcards (fixed 20-card set).",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "icons": "node scripts/generate-icons.mjs"
+  },
+  "dependencies": {
+    "framer-motion": "^11.3.0",
+    "next": "^14.2.35",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8",
+    "sharp": "^0.33.4",
+    "tailwindcss": "^3.4.7",
+    "typescript": "^5"
+  }
+}
