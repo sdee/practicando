@@ -52,6 +52,22 @@ Conjugations are generated once by `tools/conjugator` (Python `spanishconjugator
    on the default branch): `git push origin dev`, wait for the deploy, then
    `PROMOTE=1 git push origin origin/dev:main`.
 
+## Deploying before the repo is connected to Netlify
+
+The site was created with the CLI and is not yet connected to GitHub (connect it in Netlify →
+Site configuration → Build & deploy to get push-to-deploy). Until then, deploy dev by hand:
+
+```bash
+git push origin <branch>:dev
+netlify deploy --build --context branch-deploy --alias dev   # → https://dev--practicando-pwa.netlify.app
+```
+
+`--context branch-deploy` matters: the CLI defaults to the `production` context, which
+`withPwaEnv` refuses to build from any branch but `main`.
+
+Voice answers also need `OPENAI_API_KEY` as a Netlify environment variable (all contexts);
+without it `/api/transcribe` answers 503 and the mic reports that voice isn't set up.
+
 ## Daily flow
 
 1. `npm run dev` / `git push origin dev` → test on **Practicando Dev**.
