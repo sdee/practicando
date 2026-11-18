@@ -6,6 +6,8 @@ import { createRound, transitionRound, completeRound, getActiveRound, submitGues
 import { getOverlapHighlight } from '@/lib/text';
 import { VerbSetModal } from './VerbSetModal';
 import { ConjugationModal } from './ConjugationModal';
+import VoiceAnswer from './VoiceAnswer';
+import { gradeSpoken } from '@/lib/voice';
 
 interface PronounOption {
   value: string;
@@ -408,15 +410,23 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
     setPreviousGuess(null);
   }, [guess.id]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userAnswer.trim()) return;
+  // `spoken` answers come from speech-to-text: no accents to judge, so they match accent-insensitively.
+  const submit = (raw: string, spoken = false) => {
+    if (!raw.trim()) return;
 
-    const isCorrect = userAnswer.toLowerCase().trim() === guess.correct_answer.toLowerCase();
-    
+    let answer = raw;
+    let isCorrect = raw.toLowerCase().trim() === guess.correct_answer.toLowerCase();
+    if (spoken) {
+      const graded = gradeSpoken(raw, guess.correct_answer);
+      answer = graded.text;
+      isCorrect = graded.correct;
+      if (!answer) return;
+    }
+    setUserAnswer(answer);
+
     // If incorrect and retry is allowed and not yet used, allow one retry without revealing
     if (!isCorrect && allowRetry && !hasRetried) {
-      setPreviousGuess(userAnswer);
+      setPreviousGuess(answer);
       setUserAnswer('');
       setHasRetried(true);
       setAnimationClass('animate-enhanced-shake');
@@ -433,7 +443,12 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
     }
     setTimeout(() => setAnimationClass(''), 1200);
 
-    onAnswer(isCorrect, userAnswer);
+    onAnswer(isCorrect, answer);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submit(userAnswer);
   };
 
   const handleNext = useCallback(() => {
@@ -542,6 +557,7 @@ function Flashcard({ guess, questionNumber, totalQuestions, onAnswer, onNext, st
                 autoFocus
               />
             </div>
+            <VoiceAnswer verb={guess.verb} onTranscript={(text) => submit(text, true)} />
             {/* Previous guess moved to header under chips */}
             <button
               type="submit"
