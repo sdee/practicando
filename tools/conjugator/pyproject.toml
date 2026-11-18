@@ -1,0 +1,6 @@
+[project]
+name = "practicando-conjugator"
+version = "0.1.0"
+description = "Build-time conjugation generator for Practicando (output is committed JSON)."
+requires-python = ">=3.9"
+dependencies = ["spanishconjugator==2.3.9474", "pytest"]
