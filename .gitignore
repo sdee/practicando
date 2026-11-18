@@ -1,101 +1,29 @@
-# .gitignore
-
-# Python
-venv/
+# dependencies
+/node_modules
+tools/conjugator/.venv/
 __pycache__/
-.env
 *.pyc
 
-# Environment files
-.env
-.env.*
-!.env.example
-!.env.*.example
+# next.js
+/.next/
+/out/
+/build
+next-env.d.ts
+*.tsbuildinfo
 
-# Database files
-*.db
-*.sqlite
-*.sqlite3
+# env files — keep the template
+.env*
+!.env.local.example
 
-# Node.js dependencies and build files
-node_modules/
-**/node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-package-lock.json
-.next/
-build/
-dist/
-
-# Frontend specific
-/frontend/build/
-/frontend-nextjs/.next/
-
-# Backend static files
-/backend/static/
-
-# OS generated files
+# misc
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# IDEs
+*.pem
+*.swp
+npm-debug.log*
+.netlify
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
 
-# Logs
-logs
-*.log
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage/
-
-# nyc test coverage
-.nyc_output
-
-# Dependency directories
-jspm_packages/
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Microbundle cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# dotenv environment variables file
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Stores VSCode versions used for testing VSCode extensions
-.vscode-test
+# local databases (old FastAPI backend)
+*.db
+*.sqlite*

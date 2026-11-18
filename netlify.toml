@@ -1,0 +1,14 @@
+# Netlify deploy config for the Next.js PWA (one site, two environments — see docs/deploy.md).
+[build]
+  command = "npm run build"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY are site-wide Netlify
+# variables (set by `npm run db:setup`). The database schema is NOT configured here: it is
+# derived from the build's environment (production → `practicando`, everything else →
+# `practicando_dev`), so a misconfigured variable can't point dev at production data.

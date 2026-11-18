@@ -1,0 +1,33 @@
+#!/bin/sh
+# Refuses a direct push to the production branch — accidents only, not a security boundary
+# (--no-verify bypasses it, same as any client-side hook). This exists because GitHub Free
+# doesn't support branch protection/rulesets on a private repo, so there's no server-side
+# equivalent; see .github/workflows/promote.yml, the sanctioned path to production, which
+# fast-forwards main from a tested dev commit with its own checks.
+#
+# Not app-specific except PROD_BRANCH — meant to move into a shared template alongside
+# promote.yml.
+#
+# Activated via `git config core.hooksPath .githooks` (see package.json's postinstall).
+
+PROD_BRANCH="main"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    "refs/heads/$PROD_BRANCH")
+      if [ "$PROMOTE" != "1" ]; then
+        echo "" >&2
+        echo "✋ Refusing to push directly to '$PROD_BRANCH'." >&2
+        echo "   Promotion goes through .github/workflows/promote.yml (Actions → Run workflow)," >&2
+        echo "   which fast-forwards $PROD_BRANCH from a dev commit that's already tested live." >&2
+        echo "" >&2
+        echo "   Really mean it (e.g. an emergency rollback commit)? Prefix the same push" >&2
+        echo "   with PROMOTE=1, e.g.:  PROMOTE=1 git push origin main" >&2
+        echo "" >&2
+        exit 1
+      fi
+      ;;
+  esac
+done
+
+exit 0

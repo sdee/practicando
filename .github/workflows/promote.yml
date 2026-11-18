@@ -1,0 +1,124 @@
+# Promotes the exact tested `dev` commit to production by fast-forwarding `main` to it.
+#
+# Deliberately NOT a reusable (workflow_call) workflow yet — this lives directly in Practicando
+# until a second PWA needs the same promotion logic, at which point it moves into a shared
+# repo (see the dev/prod deployment plan) and this file becomes a ~10-line caller. Written so
+# that extraction is mostly a cut-and-paste: nothing here is app-specific except the two
+# URLs and branch names in `env`.
+#
+# GitHub only lets a workflow_dispatch trigger fire for a workflow file that exists on the
+# repo's DEFAULT branch — so this file has to reach `main` once via a direct, manual
+# fast-forward (see docs/deploy.md "Bootstrapping") before it can be dispatched at all.
+# After that, every run is dispatched from `main` (checkout below still explicitly pins to
+# `dev`'s tip, so it always promotes whatever is live on dev regardless of which ref the
+# dispatch itself was fired from).
+name: Promote dev → production
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: 'Short SHA from the DEV banner, to confirm what you tested (blank = current dev head)'
+        required: false
+
+# Only one promotion at a time; never cancel one that's already pushing/verifying.
+concurrency:
+  group: promote-production
+  cancel-in-progress: false
+
+env:
+  DEV_BRANCH: dev
+  PROD_BRANCH: main
+  DEV_URL: https://dev--practicando-pwa.netlify.app
+  PROD_URL: https://practicando-pwa.netlify.app
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEV_BRANCH }}
+          fetch-depth: 0
+
+      - name: Resolve dev/main and validate
+        id: resolve
+        run: |
+          set -euo pipefail
+          git fetch origin "$DEV_BRANCH" "$PROD_BRANCH" --quiet
+          DEV_SHA=$(git rev-parse "origin/$DEV_BRANCH")
+          MAIN_SHA=$(git rev-parse "origin/$PROD_BRANCH")
+          echo "dev is at $DEV_SHA"
+          echo "main is at $MAIN_SHA"
+
+          EXPECTED="${{ inputs.expected_sha }}"
+          if [ -n "$EXPECTED" ] && [[ "$DEV_SHA" != "$EXPECTED"* ]]; then
+            echo "::error::dev has moved since you tested $EXPECTED (dev is now at $DEV_SHA)."
+            echo "::error::Re-check the DEV banner and re-run with the current SHA, or leave it blank."
+            exit 1
+          fi
+
+          if [ "$MAIN_SHA" = "$DEV_SHA" ]; then
+            echo "::error::main is already at $DEV_SHA — nothing to promote."
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "origin/$PROD_BRANCH" "origin/$DEV_BRANCH"; then
+            echo "::error::main has diverged from dev (main is not an ancestor of dev)."
+            echo "::error::A fast-forward push would be rejected. Rebase or merge dev onto the"
+            echo "::error::latest main, push dev again, and re-run this workflow."
+            exit 1
+          fi
+
+          echo "dev_sha=$DEV_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Confirm the commit is actually live on dev
+        run: |
+          set -euo pipefail
+          DEV_SHA="${{ steps.resolve.outputs.dev_sha }}"
+          for i in $(seq 1 10); do
+            LIVE_SHA=$(curl -fsS "$DEV_URL/api/build" | jq -r '.sha // empty') || LIVE_SHA=""
+            if [ "$LIVE_SHA" = "$DEV_SHA" ]; then
+              echo "✓ $DEV_URL is serving $DEV_SHA"
+              exit 0
+            fi
+            echo "waiting for $DEV_URL to serve $DEV_SHA (currently $LIVE_SHA) — attempt $i/10"
+            sleep 15
+          done
+          echo "::error::$DEV_URL never served $DEV_SHA — is the dev branch deploy still building or did it fail?"
+          exit 1
+
+      - name: Fast-forward main to dev (push, not force — rejected if not a fast-forward)
+        run: |
+          set -euo pipefail
+          DEV_SHA="${{ steps.resolve.outputs.dev_sha }}"
+          git push origin "$DEV_SHA:refs/heads/$PROD_BRANCH"
+          echo "Pushed $DEV_SHA to $PROD_BRANCH."
+
+      - name: Wait for production to deploy the promoted commit
+        run: |
+          set -euo pipefail
+          DEV_SHA="${{ steps.resolve.outputs.dev_sha }}"
+          for i in $(seq 1 20); do
+            LIVE_SHA=$(curl -fsS "$PROD_URL/api/build" | jq -r '.sha // empty') || LIVE_SHA=""
+            if [ "$LIVE_SHA" = "$DEV_SHA" ]; then
+              {
+                echo "### ✅ Promoted to production"
+                echo "- Commit: \`$DEV_SHA\`"
+                echo "- $PROD_URL is now serving it"
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "waiting for $PROD_URL to serve $DEV_SHA (currently $LIVE_SHA) — attempt $i/20"
+            sleep 15
+          done
+          {
+            echo "### ⚠️ Pushed, but production hasn't picked it up yet"
+            echo "- Commit \`$DEV_SHA\` was pushed to $PROD_BRANCH"
+            echo "- $PROD_URL was still not serving it after 5 minutes — check the Netlify deploy log"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
